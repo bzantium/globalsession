@@ -1,0 +1,70 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set version from tag
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
+
+      - name: Build app
+        run: |
+          xcodebuild -project GlobalSession.xcodeproj \
+            -scheme GlobalSession \
+            -configuration Release \
+            -destination 'platform=macOS' \
+            -derivedDataPath build/DerivedData \
+            build
+
+      - name: Install create-dmg
+        run: brew install create-dmg
+
+      - name: Create DMG
+        run: |
+          mkdir -p dist dmg-staging
+          cp -R build/DerivedData/Build/Products/Release/GlobalSession.app dmg-staging/
+          create-dmg \
+            --volname "GlobalSession Installer" \
+            --window-pos 200 120 \
+            --window-size 600 400 \
+            --icon-size 100 \
+            --icon "GlobalSession.app" 150 185 \
+            --app-drop-link 450 185 \
+            --no-internet-enable \
+            "dist/GlobalSession-${VERSION}.dmg" \
+            dmg-staging/
+
+      - name: Compute SHA256
+        run: |
+          SHA=$(shasum -a 256 dist/GlobalSession-${VERSION}.dmg | awk '{print $1}')
+          echo "SHA256=${SHA}" >> $GITHUB_ENV
+          echo "SHA256: ${SHA}"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/GlobalSession-${{ env.VERSION }}.dmg
+          body: |
+            ## GlobalSession v${{ env.VERSION }}
+
+            ### Install via Homebrew
+            ```
+            brew tap bzantium/globalsession
+            brew install --cask globalsession
+            ```
+
+            ### Manual Install
+            Download the DMG below, open it, and drag GlobalSession to Applications.
+
+            > **Note:** This app is not code-signed. On first launch, right-click the app and select "Open", then click "Open" in the dialog.
+
+            **SHA256:** `${{ env.SHA256 }}`
+          draft: false
+          prerelease: false

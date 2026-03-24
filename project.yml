@@ -1,0 +1,31 @@
+name: GlobalSession
+options:
+  bundleIdPrefix: com.ryan
+  deploymentTarget:
+    macOS: "13.0"
+  xcodeVersion: "15.0"
+  generateEmptyDirectories: true
+
+targets:
+  GlobalSession:
+    type: application
+    platform: macOS
+    sources:
+      - GlobalSession
+    postBuildScripts:
+      - script: |
+          cp "${PROJECT_DIR}/GlobalSession/Assets.xcassets/MenuBarIcon.imageset/menubar_icon.png" "${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app/Contents/Resources/menubar_icon.png"
+          cp "${PROJECT_DIR}/GlobalSession/Assets.xcassets/MenuBarIcon.imageset/menubar_icon@2x.png" "${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app/Contents/Resources/menubar_icon@2x.png"
+        name: Bundle menu bar icon
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ryan.GlobalSession
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+        INFOPLIST_KEY_LSUIElement: true
+        SWIFT_VERSION: "5.9"
+        MACOSX_DEPLOYMENT_TARGET: "13.0"
+        CODE_SIGN_ENTITLEMENTS: GlobalSession/GlobalSession.entitlements
+        ENABLE_APP_SANDBOX: false
+        GENERATE_INFOPLIST_FILE: true
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
