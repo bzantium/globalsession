@@ -15,10 +15,6 @@
 - **Dev/Prod Mode Toggle** — Switch SASE policy mode directly from the menu bar
 - **Alert Levels** — Color-coded warnings as your session approaches expiry
 
-## Screenshot
-
-<!-- TODO: Add screenshot -->
-
 ## Install
 
 ### Homebrew (recommended)
