@@ -11,5 +11,8 @@ xcuserdata/
 # macOS
 .DS_Store
 
+# Claude
+CLAUDE.md
+
 # Build artifacts
 dist/
