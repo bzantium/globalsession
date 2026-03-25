@@ -6,7 +6,6 @@ final class MenuBarViewModel: ObservableObject {
     @Published var policyMode: PolicyMode = .unknown
     @Published var isSwitchingMode = false
     @Published var switchingToProd: Bool? = nil  // nil = not switching, true = →prod, false = →dev
-    @Published var modeCooldown = 0  // cooldown seconds remaining
     @Published var lastError: String?
 
     let sessionManager = SessionManager()
@@ -15,7 +14,7 @@ final class MenuBarViewModel: ObservableObject {
     private var logTimer: Timer?
     private var errorDismissTask: Task<Void, Never>?
     private var policyTimer: Timer?
-    private var isBusy = false  // Pause polling during mode switch
+    @Published var isBusy = false
     private var cancellables = Set<AnyCancellable>()
 
     init() {
@@ -35,7 +34,7 @@ final class MenuBarViewModel: ObservableObject {
     // MARK: - Actions
 
     func switchMode(to mode: PolicyMode) {
-        guard !isSwitchingMode, modeCooldown <= 0 else { return }
+        guard !isSwitchingMode, !isBusy else { return }
         Task {
             await MainActor.run {
                 isSwitchingMode = true
@@ -43,26 +42,23 @@ final class MenuBarViewModel: ObservableObject {
                 isBusy = true
                 lastError = nil
             }
-            var success = false
             do {
                 try await policyService.switchMode(mode)
-                await MainActor.run { policyMode = mode }
-                success = true
+                await MainActor.run {
+                    policyMode = mode
+                    isSwitchingMode = false
+                    switchingToProd = nil
+                }
+                // Keep isBusy=true while VPN tunnel stabilizes (prevents polling interference)
+                await policyService.waitForStability()
+                await MainActor.run { isBusy = false }
             } catch {
                 let msg = "Failed to switch to \(mode.label): \(error.localizedDescription)"
-                await MainActor.run { self.showError(msg) }
-            }
-            await MainActor.run {
-                isBusy = false
-                isSwitchingMode = false
-                switchingToProd = nil
-            }
-            // 10s cooldown only on success
-            if success {
-                await MainActor.run { modeCooldown = 10 }
-                for i in stride(from: 9, through: 0, by: -1) {
-                    try? await Task.sleep(nanoseconds: 1_000_000_000)
-                    await MainActor.run { modeCooldown = i }
+                await MainActor.run {
+                    self.showError(msg)
+                    isBusy = false
+                    isSwitchingMode = false
+                    switchingToProd = nil
                 }
             }
         }
@@ -109,7 +105,7 @@ final class MenuBarViewModel: ObservableObject {
 
     @MainActor
     private func checkPolicy() async {
-        guard !isBusy, modeCooldown <= 0 else { return }
+        guard !isBusy else { return }
         await forceCheckPolicy()
     }
 

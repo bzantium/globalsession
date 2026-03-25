@@ -19,17 +19,24 @@ struct MenuBarPopover: View {
                     .foregroundColor(toProd ? .orange : .blue)
                     .padding(12)
                 Divider()
-            } else if viewModel.modeCooldown > 0 {
-                Text("Mode switch available in \(viewModel.modeCooldown)s")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .padding(12)
+            } else if viewModel.isBusy {
+                HStack(spacing: 6) {
+                    ProgressView()
+                        .controlSize(.small)
+                        .scaleEffect(0.5)
+                        .frame(width: 12, height: 12)
+                    Text("Stabilizing VPN... (Switching Disabled)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .padding(12)
                 Divider()
             } else if let error = viewModel.lastError {
                 Text(error)
                     .font(.caption)
                     .foregroundColor(.red)
                     .lineLimit(2)
+                    .help(error)
                     .padding(12)
                 Divider()
             }
@@ -78,7 +85,7 @@ struct MenuBarPopover: View {
         let isProd = viewModel.policyMode == .prod
 
         let switching = viewModel.isSwitchingMode
-        let disabled = switching || viewModel.modeCooldown > 0
+        let disabled = switching || viewModel.isBusy
 
         return HStack(spacing: 0) {
             Text("Dev")
@@ -142,7 +149,7 @@ struct MenuBarPopover: View {
 
             if let connectTime = viewModel.sessionManager.sessionInfo?.connectTime {
                 HStack {
-                    Text("Connected at \(connectTime, style: .time)")
+                    Text("Connected at \(connectTime, format: .dateTime.hour().minute()) (\(connectTime, format: .dateTime.month(.defaultDigits).day(.twoDigits)))")
                         .font(.caption2)
                         .foregroundColor(.white)
                     Spacer()

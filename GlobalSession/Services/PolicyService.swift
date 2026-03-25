@@ -32,6 +32,14 @@ final class PolicyService {
             throw PolicyError.switchFailed
         }
     }
+
+    func waitForStability() async -> Bool {
+        for _ in 0..<15 {
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            if let _ = try? await fetchPolicy() { return true }
+        }
+        return false
+    }
 }
 
 enum PolicyError: LocalizedError {
