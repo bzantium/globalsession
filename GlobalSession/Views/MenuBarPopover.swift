@@ -19,7 +19,7 @@ struct MenuBarPopover: View {
             if viewModel.isSwitchingMode, let toProd = viewModel.switchingToProd {
                 Text("Switching to \(toProd ? "Prod" : "Dev")...")
                     .font(.caption)
-                    .foregroundColor(toProd ? .orange : .blue)
+                    .foregroundColor(.white)
                     .padding(12)
                 Divider()
             } else if viewModel.isBusy {
