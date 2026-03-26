@@ -146,8 +146,8 @@ struct MenuBarPopover: View {
                     LinearGradient(
                         stops: [
                             .init(color: .red, location: 0),
-                            .init(color: .orange, location: 0.25),
-                            .init(color: .yellow, location: 0.5),
+                            .init(color: .orange, location: 0.15),
+                            .init(color: .yellow, location: 0.35),
                             .init(color: .green, location: 1),
                         ],
                         startPoint: .leading,
