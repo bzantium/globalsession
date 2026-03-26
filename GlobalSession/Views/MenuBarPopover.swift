@@ -11,6 +11,9 @@ struct MenuBarPopover: View {
             if viewModel.connectionState == .connected {
                 sessionTimerSection
                 Divider()
+            } else if viewModel.connectionState == .disconnected {
+                disconnectedSection
+                Divider()
             }
 
             if viewModel.isSwitchingMode, let toProd = viewModel.switchingToProd {
@@ -133,16 +136,31 @@ struct MenuBarPopover: View {
                 Text(timerText)
                     .font(.system(.title2, design: .monospaced))
                     .fontWeight(.medium)
-                    .foregroundColor(viewModel.sessionManager.alertLevel.color)
+                    .foregroundColor(.white)
             }
 
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     RoundedRectangle(cornerRadius: 3)
                         .fill(Color.secondary.opacity(0.2))
-                    RoundedRectangle(cornerRadius: 3)
-                        .fill(viewModel.sessionManager.alertLevel.color)
-                        .frame(width: geo.size.width * progressFraction)
+                    LinearGradient(
+                        stops: [
+                            .init(color: .red, location: 0),
+                            .init(color: .orange, location: 0.25),
+                            .init(color: .yellow, location: 0.5),
+                            .init(color: .green, location: 1),
+                        ],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                    .frame(width: geo.size.width)
+                    .clipShape(RoundedRectangle(cornerRadius: 3))
+                    .mask(
+                        HStack {
+                            Rectangle().frame(width: geo.size.width * progressFraction)
+                            Spacer(minLength: 0)
+                        }
+                    )
                 }
             }
             .frame(height: 6)
@@ -173,6 +191,35 @@ struct MenuBarPopover: View {
         let remaining = viewModel.sessionManager.remainingSeconds
         guard remaining > 0 else { return 0 }
         return CGFloat(remaining / AppConstants.sessionDuration)
+    }
+
+    // MARK: - Disconnected
+
+    @State private var isGPHovered = false
+
+    private var disconnectedSection: some View {
+        VStack(spacing: 8) {
+            Text("Not connected to VPN")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+
+            Text("Open GlobalProtect")
+                .font(.caption)
+                .fontWeight(.medium)
+                .foregroundColor(.white)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(isGPHovered ? Color.blue : Color.blue.opacity(0.7))
+                )
+                .contentShape(Rectangle())
+                .onHover { isGPHovered = $0 }
+                .onTapGesture {
+                    NSWorkspace.shared.open(URL(fileURLWithPath: "/Applications/GlobalProtect.app"))
+                }
+        }
+        .padding(12)
     }
 
     // MARK: - Footer

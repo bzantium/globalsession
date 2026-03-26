@@ -1,4 +1,6 @@
 import SwiftUI
+import Combine
+import ServiceManagement
 
 @main
 class AppDelegate: NSObject, NSApplicationDelegate {
@@ -7,6 +9,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var viewModel: MenuBarViewModel!
     private var globalMonitor: Any?
     private var localMonitor: Any?
+    private var iconCancellable: AnyCancellable?
+    private var templateIcon: NSImage?
 
     static func main() {
         let app = NSApplication.shared
@@ -16,25 +20,32 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        try? SMAppService.mainApp.register()
         viewModel = MenuBarViewModel()
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 
         if let button = statusItem.button {
-            let img: NSImage
             if let resourcePath = Bundle.main.path(forResource: "menubar_icon", ofType: "png"),
                let customImg = NSImage(contentsOfFile: resourcePath) {
                 customImg.size = NSSize(width: 16, height: 16)
-                customImg.isTemplate = true
-                img = customImg
+                templateIcon = customImg
             } else {
-                img = NSImage(systemSymbolName: "shield.checkered", accessibilityDescription: "GlobalSession")!
-                img.isTemplate = true
+                let img = NSImage(systemSymbolName: "shield.checkered", accessibilityDescription: "GlobalSession")!
+                templateIcon = img
             }
-            button.image = img
+            templateIcon?.isTemplate = true
+            button.image = templateIcon
             button.action = #selector(togglePanel)
             button.target = self
         }
+
+        iconCancellable = viewModel.$policyMode
+            .combineLatest(viewModel.$connectionState)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] mode, state in
+                self?.updateIcon(mode: mode, connected: state == .connected)
+            }
 
         let popoverView = MenuBarPopover(viewModel: viewModel)
             .environment(\.colorScheme, .dark)
@@ -106,6 +117,36 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 self.hidePanel()
             }
             return event
+        }
+    }
+
+    private func updateIcon(mode: PolicyMode, connected: Bool) {
+        guard let button = statusItem.button, let template = templateIcon else { return }
+        if connected, mode != .unknown {
+            let tint: NSColor = mode == .prod ? .systemOrange : .systemBlue
+            let size = template.size
+
+            let composite = NSImage(size: size, flipped: false) { rect in
+                // Outline: full-size icon in white
+                template.draw(in: rect)
+                NSColor.white.set()
+                rect.fill(using: .sourceAtop)
+
+                // Colored fill: slightly inset, drawn on top
+                let fillImg = NSImage(size: size, flipped: false) { r in
+                    template.draw(in: r.insetBy(dx: 1.5, dy: 1.5))
+                    tint.set()
+                    r.fill(using: .sourceAtop)
+                    return true
+                }
+                fillImg.draw(in: rect, from: .zero, operation: .sourceOver, fraction: 1.0)
+                return true
+            }
+            composite.isTemplate = false
+            button.image = composite
+        } else {
+            template.isTemplate = true
+            button.image = template
         }
     }
 
