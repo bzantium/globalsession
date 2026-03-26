@@ -95,7 +95,10 @@ final class MenuBarViewModel: ObservableObject {
         sessionManager.refreshSessionInfo()
         let logConnected = sessionManager.isConnectedViaLog
 
-        if logConnected && connectionState != .connected {
+        if sessionManager.isExpired {
+            connectionState = .disconnected
+            policyMode = .unknown
+        } else if logConnected && connectionState != .connected {
             connectionState = .connected
         } else if !logConnected && connectionState == .connected {
             connectionState = .disconnected
@@ -111,6 +114,7 @@ final class MenuBarViewModel: ObservableObject {
 
     @MainActor
     private func forceCheckPolicy() async {
+        guard !sessionManager.isExpired else { return }
         do {
             let response = try await policyService.fetchPolicy()
             connectionState = .connected

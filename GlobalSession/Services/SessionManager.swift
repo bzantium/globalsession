@@ -13,6 +13,10 @@ final class SessionManager: ObservableObject {
         logParser.parseLatestSession() != nil
     }
 
+    var isExpired: Bool {
+        sessionInfo != nil && remainingSeconds <= 0
+    }
+
     func startMonitoring() {
         refreshSessionInfo()
         startCountdown()

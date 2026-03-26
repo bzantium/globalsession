@@ -6,7 +6,7 @@ final class LogParser {
         options: .anchorsMatchLines
     )
     private static let disconnectPattern = try! NSRegularExpression(
-        pattern: #"^(\d{2}/\d{2}/\d{4} \d{2}:\d{2}:\d{2}):\d+ \[Info \]: Tunnel is down due to (disconnection|network change)\.$"#,
+        pattern: #"^(\d{2}/\d{2}/\d{4} \d{2}:\d{2}:\d{2}):\d+ \[Info \]: (Tunnel is down due to (disconnection|network change|keep-alive timeout)\.|Tunnel retry done: (failed retry|received disconnect)|User was logged out of Gateway .+\.|GlobalProtect service stopped\.)$"#,
         options: .anchorsMatchLines
     )
 
