@@ -12,6 +12,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var localMonitor: Any?
     private var cancellables = Set<AnyCancellable>()
     private var templateIcon: NSImage?
+    private var blinkTimer: Timer?
 
     static func main() {
         let app = NSApplication.shared
@@ -46,6 +47,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             .receive(on: RunLoop.main)
             .sink { [weak self] mode, state in
                 self?.updateIcon(mode: mode, connected: state == .connected)
+            }
+            .store(in: &cancellables)
+
+        viewModel.$isSwitchingMode
+            .receive(on: RunLoop.main)
+            .sink { [weak self] switching in
+                self?.updateBlink(busy: switching)
             }
             .store(in: &cancellables)
 
@@ -125,6 +133,27 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 self.hidePanel()
             }
             return event
+        }
+    }
+
+    private func updateBlink(busy: Bool) {
+        guard let button = statusItem.button else { return }
+        blinkTimer?.invalidate()
+        blinkTimer = nil
+
+        if busy {
+            button.wantsLayer = true
+            let fade = CABasicAnimation(keyPath: "opacity")
+            fade.fromValue = 1.0
+            fade.toValue = 0.3
+            fade.duration = 0.8
+            fade.autoreverses = true
+            fade.repeatCount = .infinity
+            fade.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            button.layer?.add(fade, forKey: "blink")
+        } else {
+            button.layer?.removeAnimation(forKey: "blink")
+            button.layer?.opacity = 1.0
         }
     }
 
