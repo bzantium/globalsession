@@ -5,15 +5,27 @@
 <h1 align="center">GlobalSession</h1>
 
 <p align="center">
-  macOS menu bar app for monitoring GlobalProtect VPN session status.
+  <strong>Keep track of your GlobalProtect VPN session, right from the menu bar.</strong>
 </p>
+
+<p align="center">
+  <a href="https://github.com/bzantium/globalsession/releases/latest"><img src="https://img.shields.io/github/v/release/bzantium/globalsession?label=Download" alt="Download"></a>
+  <img src="https://img.shields.io/badge/platform-macOS%2013%2B-blue" alt="Platform">
+  <img src="https://img.shields.io/github/license/bzantium/globalsession" alt="License">
+</p>
+
+---
+
+GlobalSession is a lightweight macOS menu bar utility that monitors your GlobalProtect VPN connection. It shows session time remaining, lets you switch SASE policy modes, and provides quick connect/disconnect/restart controls — all without opening the GlobalProtect app.
 
 ## Features
 
-- **Session Timer** — Tracks your VPN session time with a countdown and progress bar
-- **Status Indicator** — Green/red dot showing VPN connection state at a glance
-- **Dev/Prod Mode Toggle** — Switch SASE policy mode directly from the menu bar
-- **Alert Levels** — Color-coded warnings as your session approaches expiry
+- **Session Countdown** — Live timer with a color-coded gradient progress bar (green → yellow → red)
+- **Dev / Prod Mode Toggle** — Switch SASE policy mode instantly with animated wave transition
+- **VPN Controls** — Connect, disconnect, or restart your VPN directly from the popover
+- **Color-Coded Menu Bar Icon** — Blue for Dev, orange for Prod, monochrome when disconnected
+- **Session Expiry Detection** — Automatically detects when your session expires and updates the UI
+- **Launch at Login** — Starts automatically via macOS Login Items
 
 ## Install
 
@@ -26,32 +38,30 @@ brew install --cask globalsession
 
 ### Manual
 
-Download the latest DMG from [Releases](https://github.com/bzantium/globalsession/releases), open it, and drag GlobalSession to Applications.
+Download the latest `.dmg` from [Releases](https://github.com/bzantium/globalsession/releases), open it, and drag **GlobalSession** to Applications.
 
-> **Note:** This app is not code-signed. On first launch, right-click the app and select "Open", then click "Open" in the dialog.
+> **Note:** On first launch, right-click the app → Open → Open, since the app is not notarized.
+
+## Requirements
+
+- macOS Ventura (13.0) or later
+- GlobalProtect VPN client installed
+- Accessibility permission (required for VPN connect/disconnect controls)
 
 ## Build from Source
 
-Requires Xcode 15+ and macOS Ventura (13.0) or later.
-
 ```bash
-xcodebuild -project GlobalSession.xcodeproj \
-  -scheme GlobalSession \
-  -configuration Release \
-  -destination 'platform=macOS' \
-  build
+git clone https://github.com/bzantium/globalsession.git
+cd globalsession
+./scripts/dev.sh
 ```
 
-To build a DMG installer:
+Or build a DMG installer:
 
 ```bash
 brew install create-dmg
 ./scripts/build-dmg.sh
 ```
-
-## How It Works
-
-GlobalSession reads the GlobalProtect event log to detect VPN connect/disconnect events and calculates the remaining session time (9-hour sessions). It also communicates with a SASE policy API to display and switch between dev/prod modes.
 
 ## License
 
