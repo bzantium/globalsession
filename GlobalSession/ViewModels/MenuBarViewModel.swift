@@ -98,7 +98,11 @@ final class MenuBarViewModel: ObservableObject {
                 // Wait until VPN is actually disconnected
                 for _ in 0..<15 {
                     try? await Task.sleep(nanoseconds: 1_000_000_000)
-                    if !sessionManager.isConnectedViaLog { break }
+                    let stillConnected = await MainActor.run {
+                        sessionManager.refreshSessionInfo()
+                        return sessionManager.isConnectedViaLog
+                    }
+                    if !stillConnected { break }
                 }
                 await MainActor.run {
                     connectionState = .disconnected
@@ -124,22 +128,50 @@ final class MenuBarViewModel: ObservableObject {
         Task {
 
             // Step 1: Disconnect
+            // The AppleScript may throw (timeout, permission error) even though it
+            // partially succeeded (clicked the disconnect button). So on failure,
+            // poll the log to see if the VPN actually disconnected before giving up.
             do {
                 try await vpnControl.perform(.disconnect)
             } catch {
-                await MainActor.run {
-                    showError("Restart failed during disconnect: \(error.localizedDescription)")
-                    isVPNToggling = false
-                    isBusy = false
-                    isRestarting = false
-                    restartStatus = nil
+                // Script errored – but the VPN might still be disconnecting.
+                // Wait up to 10 seconds, checking every second.
+                var disconnected = false
+                for _ in 0..<10 {
+                    try? await Task.sleep(nanoseconds: 1_000_000_000)
+                    let stillConnected = await MainActor.run {
+                        sessionManager.refreshSessionInfo()
+                        return sessionManager.isConnectedViaLog
+                    }
+                    if !stillConnected {
+                        disconnected = true
+                        break
+                    }
                 }
-                return
+                if !disconnected {
+                    await MainActor.run {
+                        showError("Restart failed during disconnect: \(error.localizedDescription)")
+                        isVPNToggling = false
+                        isBusy = false
+                        isRestarting = false
+                        restartStatus = nil
+                    }
+                    return
+                }
+                // VPN did disconnect despite the script error – continue restart flow.
             }
 
-            // Step 2: Let GlobalProtect settle before reconnecting
+            // Step 2: Wait for VPN to fully disconnect (confirmed via log)
             await MainActor.run { restartStatus = "Settling..." }
-            try? await Task.sleep(nanoseconds: 3_000_000_000) // 3 seconds
+            for _ in 0..<15 {
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                let stillConnected = await MainActor.run {
+                    sessionManager.refreshSessionInfo()
+                    return sessionManager.isConnectedViaLog
+                }
+                if !stillConnected { break }
+            }
+            try? await Task.sleep(nanoseconds: 2_000_000_000) // extra settle time
 
             // Step 3: Reconnect
             await MainActor.run { restartStatus = "Reconnecting..." }
