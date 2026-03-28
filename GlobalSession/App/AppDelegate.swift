@@ -1,6 +1,7 @@
 import SwiftUI
 import Combine
 import ServiceManagement
+import ApplicationServices
 
 @main
 class AppDelegate: NSObject, NSApplicationDelegate {
@@ -85,6 +86,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
         clearBackgrounds(panel.contentView!)
+
+        // Prompt after UI is ready
+        DispatchQueue.main.async { [weak self] in
+            self?.promptForAccessibilityIfNeeded()
+        }
     }
 
     @objc private func togglePanel() {
@@ -161,6 +167,26 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if let monitor = localMonitor {
             NSEvent.removeMonitor(monitor)
             localMonitor = nil
+        }
+    }
+
+    // MARK: - Accessibility Permission
+
+    private func promptForAccessibilityIfNeeded() {
+        guard !AXIsProcessTrusted() else { return }
+
+        let alert = NSAlert()
+        alert.messageText = "Accessibility Permission Required"
+        alert.informativeText = "GlobalSession needs Accessibility permission to control VPN connect/disconnect.\n\nAfter opening Settings, click \"+\" and add GlobalSession from Applications."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Open Settings")
+        alert.addButton(withTitle: "Later")
+
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+                NSWorkspace.shared.open(url)
+            }
         }
     }
 }
