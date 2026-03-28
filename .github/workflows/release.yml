@@ -77,7 +77,7 @@ jobs:
           GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
         run: |
           CASK_SHA=$(gh api repos/bzantium/homebrew-globalsession/contents/Casks/globalsession.rb -q .sha)
-          CONTENT=$(printf 'cask "globalsession" do\n  version "%s"\n  sha256 "%s"\n\n  url "https://github.com/bzantium/globalsession/releases/download/v#{version}/GlobalSession-#{version}.dmg"\n  name "GlobalSession"\n  desc "macOS menu bar app for monitoring GlobalProtect VPN session status"\n  homepage "https://github.com/bzantium/globalsession"\n\n  depends_on macos: ">= :ventura"\n\n  app "GlobalSession.app"\n\n  zap trash: [\n    "~/Library/Preferences/com.ryan.GlobalSession.plist",\n  ]\nend\n' "$VERSION" "$SHA256" | base64)
+          CONTENT=$(printf 'cask "globalsession" do\n  version "%s"\n  sha256 "%s"\n\n  url "https://github.com/bzantium/globalsession/releases/download/v#{version}/GlobalSession-#{version}.dmg"\n  name "GlobalSession"\n  desc "macOS menu bar app for monitoring GlobalProtect VPN session status"\n  homepage "https://github.com/bzantium/globalsession"\n\n  depends_on macos: ">= :ventura"\n\n  app "GlobalSession.app"\n\n  postflight do\n    system_command "/usr/bin/xattr",\n                   args: ["-dr", "com.apple.quarantine", "#{appdir}/GlobalSession.app"]\n  end\n\n  zap trash: [\n    "~/Library/Preferences/com.ryan.GlobalSession.plist",\n  ]\nend\n' "$VERSION" "$SHA256" | base64)
           gh api -X PUT repos/bzantium/homebrew-globalsession/contents/Casks/globalsession.rb \
             -f message="Update cask to v${VERSION}" \
             -f content="$CONTENT" \
