@@ -16,6 +16,7 @@
 		BB611D9E50988584D915D92F /* MenuBarViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E291DA883AEFA704BAF47A12 /* MenuBarViewModel.swift */; };
 		C4D062E9646C552A01018AD3 /* VPNState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E3D671C3B54EA035947B4EB /* VPNState.swift */; };
 		C92B3D433C55B0F15D152279 /* SessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE81851C98466BDA6BCEEA8D /* SessionManager.swift */; };
+		AA1122334455667788990011 /* VPNControlService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1122334455667788990022 /* VPNControlService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -30,6 +31,7 @@
 		C7ADACF8347607C57E661031 /* LogParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogParser.swift; sourceTree = "<group>"; };
 		DE81851C98466BDA6BCEEA8D /* SessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionManager.swift; sourceTree = "<group>"; };
 		E291DA883AEFA704BAF47A12 /* MenuBarViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarViewModel.swift; sourceTree = "<group>"; };
+		AA1122334455667788990022 /* VPNControlService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VPNControlService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -102,6 +104,7 @@
 				C7ADACF8347607C57E661031 /* LogParser.swift */,
 				1C60EBB9DBD664E1B6C2EBF0 /* PolicyService.swift */,
 				DE81851C98466BDA6BCEEA8D /* SessionManager.swift */,
+				AA1122334455667788990022 /* VPNControlService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -202,6 +205,7 @@
 				BB611D9E50988584D915D92F /* MenuBarViewModel.swift in Sources */,
 				189C4D5E3DBD155E4639E817 /* PolicyService.swift in Sources */,
 				C92B3D433C55B0F15D152279 /* SessionManager.swift in Sources */,
+				AA1122334455667788990011 /* VPNControlService.swift in Sources */,
 				C4D062E9646C552A01018AD3 /* VPNState.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

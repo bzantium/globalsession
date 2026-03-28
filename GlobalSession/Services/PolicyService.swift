@@ -33,10 +33,24 @@ final class PolicyService {
         }
     }
 
-    func waitForStability() async -> Bool {
+    func waitForStability(expectedMode: PolicyMode? = nil) async -> Bool {
+        var consecutiveMatches = 0
         for _ in 0..<15 {
             try? await Task.sleep(nanoseconds: 2_000_000_000)
-            if let _ = try? await fetchPolicy() { return true }
+            if let response = try? await fetchPolicy() {
+                if let expected = expectedMode {
+                    if PolicyMode(from: response.policy) == expected {
+                        consecutiveMatches += 1
+                        if consecutiveMatches >= 2 { return true }
+                    } else {
+                        consecutiveMatches = 0
+                    }
+                } else {
+                    return true
+                }
+            } else {
+                consecutiveMatches = 0
+            }
         }
         return false
     }

@@ -11,6 +11,10 @@ final class MenuBarViewModel: ObservableObject {
     let sessionManager = SessionManager()
 
     private let policyService = PolicyService()
+    private let vpnControl = VPNControlService()
+    @Published var isVPNToggling = false
+    @Published var isRestarting = false
+    @Published var restartStatus: String?
     private var logTimer: Timer?
     private var errorDismissTask: Task<Void, Never>?
     private var policyTimer: Timer?
@@ -49,8 +53,8 @@ final class MenuBarViewModel: ObservableObject {
                     isSwitchingMode = false
                     switchingToProd = nil
                 }
-                // Keep isBusy=true while VPN tunnel stabilizes (prevents polling interference)
-                await policyService.waitForStability()
+                // Keep isBusy=true until correct mode is confirmed twice consecutively
+                await policyService.waitForStability(expectedMode: mode)
                 await MainActor.run { isBusy = false }
             } catch {
                 let msg = "Failed to switch to \(mode.label): \(error.localizedDescription)"
@@ -60,6 +64,103 @@ final class MenuBarViewModel: ObservableObject {
                     isSwitchingMode = false
                     switchingToProd = nil
                 }
+            }
+        }
+    }
+
+    func connectVPN() {
+        guard !isVPNToggling, !isBusy else { return }
+        isVPNToggling = true
+        isBusy = true
+        Task {
+            do {
+                try await vpnControl.perform(.connect)
+                await policyService.waitForStability()
+                // Set connected state before clearing flags to avoid flash
+                await MainActor.run { connectionState = .connected }
+            } catch {
+                await MainActor.run { showError(error.localizedDescription) }
+            }
+            await MainActor.run {
+                isVPNToggling = false
+                isBusy = false
+            }
+        }
+    }
+
+    func disconnectVPN() {
+        guard !isVPNToggling, !isBusy else { return }
+        isVPNToggling = true
+        isBusy = true
+        Task {
+            do {
+                try await vpnControl.perform(.disconnect)
+                // Wait until VPN is actually disconnected
+                for _ in 0..<15 {
+                    try? await Task.sleep(nanoseconds: 1_000_000_000)
+                    if !sessionManager.isConnectedViaLog { break }
+                }
+                await MainActor.run {
+                    connectionState = .disconnected
+                    policyMode = .unknown
+                }
+            } catch {
+                await MainActor.run { showError(error.localizedDescription) }
+            }
+            await MainActor.run {
+                isVPNToggling = false
+                isBusy = false
+            }
+        }
+    }
+
+    func restartVPN() {
+        guard !isVPNToggling, !isBusy else { return }
+        isVPNToggling = true
+        isBusy = true
+        isRestarting = true
+        restartStatus = "Disconnecting..."
+        lastError = nil
+        Task {
+
+            // Step 1: Disconnect
+            do {
+                try await vpnControl.perform(.disconnect)
+            } catch {
+                await MainActor.run {
+                    showError("Restart failed during disconnect: \(error.localizedDescription)")
+                    isVPNToggling = false
+                    isBusy = false
+                    isRestarting = false
+                    restartStatus = nil
+                }
+                return
+            }
+
+            // Step 2: Let GlobalProtect settle before reconnecting
+            await MainActor.run { restartStatus = "Settling..." }
+            try? await Task.sleep(nanoseconds: 3_000_000_000) // 3 seconds
+
+            // Step 3: Reconnect
+            await MainActor.run { restartStatus = "Reconnecting..." }
+            do {
+                try await vpnControl.perform(.connect)
+            } catch {
+                await MainActor.run {
+                    showError("Restart failed during reconnect: \(error.localizedDescription)")
+                    isVPNToggling = false
+                    isBusy = false
+                    isRestarting = false
+                    restartStatus = nil
+                }
+                return
+            }
+
+            await MainActor.run {
+                isVPNToggling = false
+                isBusy = false
+                isRestarting = false
+                restartStatus = nil
             }
         }
     }

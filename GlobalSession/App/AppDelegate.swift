@@ -9,7 +9,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var viewModel: MenuBarViewModel!
     private var globalMonitor: Any?
     private var localMonitor: Any?
-    private var iconCancellable: AnyCancellable?
+    private var cancellables = Set<AnyCancellable>()
     private var templateIcon: NSImage?
 
     static func main() {
@@ -40,12 +40,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             button.target = self
         }
 
-        iconCancellable = viewModel.$policyMode
+        viewModel.$policyMode
             .combineLatest(viewModel.$connectionState)
             .receive(on: RunLoop.main)
             .sink { [weak self] mode, state in
                 self?.updateIcon(mode: mode, connected: state == .connected)
             }
+            .store(in: &cancellables)
 
         let popoverView = MenuBarPopover(viewModel: viewModel)
             .environment(\.colorScheme, .dark)
@@ -58,6 +59,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             defer: false
         )
         panel.isFloatingPanel = true
+        panel.hidesOnDeactivate = false
         panel.level = .statusBar
         panel.isOpaque = false
         panel.backgroundColor = .clear
