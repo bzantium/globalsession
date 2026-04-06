@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="assets/icon.png" width="128" height="128" alt="GlobalSession icon">
+  <img src="assets/icon.png" width="128" height="128" alt="gsession icon">
 </p>
 
-<h1 align="center">GlobalSession</h1>
+<h1 align="center">gsession</h1>
 
 <p align="center">
   <strong>Keep track of your GlobalProtect VPN session, right from the menu bar.</strong>
@@ -16,7 +16,7 @@
 
 ---
 
-GlobalSession is a lightweight macOS menu bar utility that monitors your GlobalProtect VPN connection. It shows session time remaining, lets you switch SASE policy modes, and provides quick connect/disconnect/restart controls — all without opening the GlobalProtect app.
+gsession is a lightweight macOS menu bar utility that monitors your GlobalProtect VPN connection. It shows session time remaining, lets you switch SASE policy modes, and provides quick connect/disconnect/restart controls — all without opening the GlobalProtect app.
 
 ## Features
 
@@ -38,7 +38,7 @@ brew install --cask globalsession
 
 ### Manual
 
-Download the latest `.dmg` from [Releases](https://github.com/bzantium/globalsession/releases), open it, and drag **GlobalSession** to Applications.
+Download the latest `.dmg` from [Releases](https://github.com/bzantium/globalsession/releases), open it, and drag **gsession** to Applications.
 
 > **Note:** On first launch, right-click the app → Open → Open, since the app is not notarized.
 

@@ -19,8 +19,8 @@ jobs:
 
       - name: Build app
         run: |
-          xcodebuild -project GlobalSession.xcodeproj \
-            -scheme GlobalSession \
+          xcodebuild -project gsession.xcodeproj \
+            -scheme gsession \
             -configuration Release \
             -destination 'platform=macOS' \
             -derivedDataPath build/DerivedData \
@@ -32,30 +32,30 @@ jobs:
       - name: Create DMG
         run: |
           mkdir -p dist dmg-staging
-          cp -R build/DerivedData/Build/Products/Release/GlobalSession.app dmg-staging/
+          cp -R build/DerivedData/Build/Products/Release/gsession.app dmg-staging/
           create-dmg \
-            --volname "GlobalSession Installer" \
+            --volname "gsession Installer" \
             --window-pos 200 120 \
             --window-size 600 400 \
             --icon-size 100 \
-            --icon "GlobalSession.app" 150 185 \
+            --icon "gsession.app" 150 185 \
             --app-drop-link 450 185 \
             --no-internet-enable \
-            "dist/GlobalSession-${VERSION}.dmg" \
+            "dist/gsession-${VERSION}.dmg" \
             dmg-staging/
 
       - name: Compute SHA256
         run: |
-          SHA=$(shasum -a 256 dist/GlobalSession-${VERSION}.dmg | awk '{print $1}')
+          SHA=$(shasum -a 256 dist/gsession-${VERSION}.dmg | awk '{print $1}')
           echo "SHA256=${SHA}" >> $GITHUB_ENV
           echo "SHA256: ${SHA}"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/GlobalSession-${{ env.VERSION }}.dmg
+          files: dist/gsession-${{ env.VERSION }}.dmg
           body: |
-            ## GlobalSession v${{ env.VERSION }}
+            ## gsession v${{ env.VERSION }}
 
             ### Install via Homebrew
             ```
@@ -64,7 +64,7 @@ jobs:
             ```
 
             ### Manual Install
-            Download the DMG below, open it, and drag GlobalSession to Applications.
+            Download the DMG below, open it, and drag gsession to Applications.
 
             > **Note:** This app is not code-signed. On first launch, right-click the app and select "Open", then click "Open" in the dialog.
 
@@ -77,7 +77,7 @@ jobs:
           GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
         run: |
           CASK_SHA=$(gh api repos/bzantium/homebrew-globalsession/contents/Casks/globalsession.rb -q .sha)
-          CONTENT=$(printf 'cask "globalsession" do\n  version "%s"\n  sha256 "%s"\n\n  url "https://github.com/bzantium/globalsession/releases/download/v#{version}/GlobalSession-#{version}.dmg"\n  name "GlobalSession"\n  desc "macOS menu bar app for monitoring GlobalProtect VPN session status"\n  homepage "https://github.com/bzantium/globalsession"\n\n  depends_on macos: ">= :ventura"\n\n  app "GlobalSession.app"\n\n  postflight do\n    system_command "/usr/bin/xattr",\n                   args: ["-dr", "com.apple.quarantine", "#{appdir}/GlobalSession.app"]\n  end\n\n  zap trash: [\n    "~/Library/Preferences/com.ryan.GlobalSession.plist",\n  ]\nend\n' "$VERSION" "$SHA256" | base64)
+          CONTENT=$(printf 'cask "globalsession" do\n  version "%s"\n  sha256 "%s"\n\n  url "https://github.com/bzantium/globalsession/releases/download/v#{version}/gsession-#{version}.dmg"\n  name "gsession"\n  desc "macOS menu bar app for monitoring GlobalProtect VPN session status"\n  homepage "https://github.com/bzantium/globalsession"\n\n  depends_on macos: ">= :ventura"\n\n  app "gsession.app"\n\n  postflight do\n    system_command "/usr/bin/xattr",\n                   args: ["-dr", "com.apple.quarantine", "#{appdir}/gsession.app"]\n  end\n\n  zap trash: [\n    "~/Library/Preferences/com.ryan.gsession.plist",\n  ]\nend\n' "$VERSION" "$SHA256" | base64)
           gh api -X PUT repos/bzantium/homebrew-globalsession/contents/Casks/globalsession.rb \
             -f message="Update cask to v${VERSION}" \
             -f content="$CONTENT" \

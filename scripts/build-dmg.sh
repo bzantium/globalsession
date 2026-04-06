@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-APP_NAME="GlobalSession"
+APP_NAME="gsession"
 DMG_NAME="${APP_NAME}-Installer"
 BUILD_DIR="$(pwd)/build"
 APP_PATH="${BUILD_DIR}/${APP_NAME}.app"

@@ -5,7 +5,7 @@ set -e
 # Example: ./scripts/update-cask.sh 1.0.0
 
 VERSION="${1:?Usage: $0 <version>}"
-DMG_URL="https://github.com/bzantium/globalsession/releases/download/v${VERSION}/GlobalSession-${VERSION}.dmg"
+DMG_URL="https://github.com/bzantium/globalsession/releases/download/v${VERSION}/gsession-${VERSION}.dmg"
 CASK_FILE="homebrew/Casks/globalsession.rb"
 
 echo "==> Downloading DMG to compute SHA256..."

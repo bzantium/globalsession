@@ -20,13 +20,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		141AC6F610DABAD0DEE3CA9C /* GlobalSession.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GlobalSession.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		141AC6F610DABAD0DEE3CA9C /* gsession.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = gsession.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1C60EBB9DBD664E1B6C2EBF0 /* PolicyService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PolicyService.swift; sourceTree = "<group>"; };
 		4E3D671C3B54EA035947B4EB /* VPNState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VPNState.swift; sourceTree = "<group>"; };
 		68A30DB2A2CF5B77CA60316B /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		7091A84C925D0FB6F3584C87 /* AppConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConstants.swift; sourceTree = "<group>"; };
 		933C4BB666F29772B5288848 /* MenuBarPopover.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarPopover.swift; sourceTree = "<group>"; };
-		A166A05FC7CB85F779267150 /* GlobalSession.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = GlobalSession.entitlements; sourceTree = "<group>"; };
+		A166A05FC7CB85F779267150 /* gsession.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = gsession.entitlements; sourceTree = "<group>"; };
 		BD8555D909B52F9F2B7F8989 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		C7ADACF8347607C57E661031 /* LogParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogParser.swift; sourceTree = "<group>"; };
 		DE81851C98466BDA6BCEEA8D /* SessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionManager.swift; sourceTree = "<group>"; };
@@ -35,24 +35,24 @@
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
-		164DB2C96A0A82BB2FEFB919 /* GlobalSession */ = {
+		164DB2C96A0A82BB2FEFB919 /* gsession */ = {
 			isa = PBXGroup;
 			children = (
 				BD8555D909B52F9F2B7F8989 /* Assets.xcassets */,
-				A166A05FC7CB85F779267150 /* GlobalSession.entitlements */,
+				A166A05FC7CB85F779267150 /* gsession.entitlements */,
 				A895C15A74A240F0541BE977 /* App */,
 				5F61D990C1019006F85AEE17 /* Models */,
 				D4BAED48433B6285F67F9250 /* Services */,
 				4E77BAF0E7CD47B56AAF9908 /* ViewModels */,
 				A8BFAA5F9A28E5E815093BB1 /* Views */,
 			);
-			path = GlobalSession;
+			path = gsession;
 			sourceTree = "<group>";
 		};
 		1EE5BDAAB9B5658A94357F4A /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				141AC6F610DABAD0DEE3CA9C /* GlobalSession.app */,
+				141AC6F610DABAD0DEE3CA9C /* gsession.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -60,7 +60,7 @@
 		42BB36E4E5D154594F0783F6 = {
 			isa = PBXGroup;
 			children = (
-				164DB2C96A0A82BB2FEFB919 /* GlobalSession */,
+				164DB2C96A0A82BB2FEFB919 /* gsession */,
 				1EE5BDAAB9B5658A94357F4A /* Products */,
 			);
 			sourceTree = "<group>";
@@ -112,9 +112,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		FAC08AE1364A6AF209F07504 /* GlobalSession */ = {
+		FAC08AE1364A6AF209F07504 /* gsession */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 195CCE232BE0AEB333A5DC5F /* Build configuration list for PBXNativeTarget "GlobalSession" */;
+			buildConfigurationList = 195CCE232BE0AEB333A5DC5F /* Build configuration list for PBXNativeTarget "gsession" */;
 			buildPhases = (
 				EAA9D296A37642BFD492A105 /* Sources */,
 				CA1DB68A72257AC30359F625 /* Resources */,
@@ -124,11 +124,11 @@
 			);
 			dependencies = (
 			);
-			name = GlobalSession;
+			name = gsession;
 			packageProductDependencies = (
 			);
-			productName = GlobalSession;
-			productReference = 141AC6F610DABAD0DEE3CA9C /* GlobalSession.app */;
+			productName = gsession;
+			productReference = 141AC6F610DABAD0DEE3CA9C /* gsession.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -142,7 +142,7 @@
 				TargetAttributes = {
 				};
 			};
-			buildConfigurationList = C0366F9F5CD7767D4C88E53F /* Build configuration list for PBXProject "GlobalSession" */;
+			buildConfigurationList = C0366F9F5CD7767D4C88E53F /* Build configuration list for PBXProject "gsession" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -156,7 +156,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				FAC08AE1364A6AF209F07504 /* GlobalSession */,
+				FAC08AE1364A6AF209F07504 /* gsession */,
 			);
 		};
 /* End PBXProject section */
@@ -189,7 +189,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "cp \"${PROJECT_DIR}/GlobalSession/Assets.xcassets/MenuBarIcon.imageset/menubar_icon.png\" \"${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app/Contents/Resources/menubar_icon.png\"\ncp \"${PROJECT_DIR}/GlobalSession/Assets.xcassets/MenuBarIcon.imageset/menubar_icon@2x.png\" \"${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app/Contents/Resources/menubar_icon@2x.png\"\n";
+			shellScript = "cp \"${PROJECT_DIR}/gsession/Assets.xcassets/MenuBarIcon.imageset/menubar_icon.png\" \"${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app/Contents/Resources/menubar_icon.png\"\ncp \"${PROJECT_DIR}/gsession/Assets.xcassets/MenuBarIcon.imageset/menubar_icon@2x.png\" \"${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app/Contents/Resources/menubar_icon@2x.png\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -217,7 +217,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = GlobalSession/GlobalSession.entitlements;
+				CODE_SIGN_ENTITLEMENTS = gsession/gsession.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_APP_SANDBOX = NO;
@@ -229,7 +229,7 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.ryan.GlobalSession;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ryan.gsession;
 				SDKROOT = macosx;
 				SWIFT_VERSION = 5.9;
 			};
@@ -239,7 +239,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = GlobalSession/GlobalSession.entitlements;
+				CODE_SIGN_ENTITLEMENTS = gsession/gsession.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_APP_SANDBOX = NO;
@@ -251,7 +251,7 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.ryan.GlobalSession;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ryan.gsession;
 				SDKROOT = macosx;
 				SWIFT_VERSION = 5.9;
 			};
@@ -379,7 +379,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		195CCE232BE0AEB333A5DC5F /* Build configuration list for PBXNativeTarget "GlobalSession" */ = {
+		195CCE232BE0AEB333A5DC5F /* Build configuration list for PBXNativeTarget "gsession" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				001313859E9BFC1C09232297 /* Debug */,
@@ -388,7 +388,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
-		C0366F9F5CD7767D4C88E53F /* Build configuration list for PBXProject "GlobalSession" */ = {
+		C0366F9F5CD7767D4C88E53F /* Build configuration list for PBXProject "gsession" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				5587AD80967FB81D8ADBD2CB /* Debug */,

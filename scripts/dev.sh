@@ -1,11 +1,11 @@
 #!/bin/bash
 set -e
 
-APP_NAME="GlobalSession"
+APP_NAME="gsession"
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 BUILD_DIR="${PROJECT_DIR}/build/DerivedData"
 APP_PATH="${BUILD_DIR}/Build/Products/Debug/${APP_NAME}.app"
-SIGN_ID="GlobalSession Dev"
+SIGN_ID="gsession Dev"
 
 pkill -x "$APP_NAME" 2>/dev/null && sleep 1 || true
 

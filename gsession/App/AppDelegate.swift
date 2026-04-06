@@ -33,7 +33,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 customImg.size = NSSize(width: 16, height: 16)
                 templateIcon = customImg
             } else {
-                let img = NSImage(systemSymbolName: "shield.checkered", accessibilityDescription: "GlobalSession")!
+                let img = NSImage(systemSymbolName: "shield.checkered", accessibilityDescription: "gsession")!
                 templateIcon = img
             }
             templateIcon?.isTemplate = true
@@ -206,7 +206,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         let alert = NSAlert()
         alert.messageText = "Accessibility Permission Required"
-        alert.informativeText = "GlobalSession needs Accessibility permission to control VPN connect/disconnect.\n\nAfter opening Settings, click \"+\" and add GlobalSession from Applications."
+        alert.informativeText = "gsession needs Accessibility permission to control VPN connect/disconnect.\n\nAfter opening Settings, click \"+\" and add gsession from Applications."
         alert.alertStyle = .warning
         alert.addButton(withTitle: "Open Settings")
         alert.addButton(withTitle: "Later")
