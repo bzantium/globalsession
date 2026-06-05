@@ -7,6 +7,11 @@ enum AppConstants {
 
     static let logFilePath = "/Library/Logs/PaloAltoNetworks/GlobalProtect/pan_gp_event.log"
 
+    /// launchd label for the GlobalProtect menu-bar GUI agent (PanGPA).
+    /// Managed in the per-user `gui/<uid>` domain; restarting it does not touch
+    /// the privileged VPN service daemon (PanGPS), so the tunnel stays up.
+    static let gpGuiLaunchdLabel = "com.paloaltonetworks.gp.pangpa"
+
     static let policyTimeout: TimeInterval = 3
     static let switchTimeout: TimeInterval = 30
     static let pollingInterval: TimeInterval = 10  // Normal polling

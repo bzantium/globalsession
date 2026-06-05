@@ -57,28 +57,11 @@ jobs:
           body: |
             ## gsession v${{ env.VERSION }}
 
-            ### Install via Homebrew
-            ```
-            brew tap bzantium/globalsession
-            brew install --cask globalsession
-            ```
-
-            ### Manual Install
+            ### Install
             Download the DMG below, open it, and drag gsession to Applications.
 
-            > **Note:** This app is not code-signed. On first launch, right-click the app and select "Open", then click "Open" in the dialog.
+            > **Note:** This app is not notarized. On first launch, right-click the app and select "Open", then click "Open" in the dialog.
 
             **SHA256:** `${{ env.SHA256 }}`
           draft: false
           prerelease: false
-
-      - name: Update Homebrew Cask
-        env:
-          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-        run: |
-          CASK_SHA=$(gh api repos/bzantium/homebrew-globalsession/contents/Casks/globalsession.rb -q .sha)
-          CONTENT=$(printf 'cask "globalsession" do\n  version "%s"\n  sha256 "%s"\n\n  url "https://github.com/bzantium/globalsession/releases/download/v#{version}/gsession-#{version}.dmg"\n  name "gsession"\n  desc "macOS menu bar app for monitoring GlobalProtect VPN session status"\n  homepage "https://github.com/bzantium/globalsession"\n\n  depends_on macos: ">= :ventura"\n\n  app "gsession.app"\n\n  postflight do\n    system_command "/usr/bin/xattr",\n                   args: ["-dr", "com.apple.quarantine", "#{appdir}/gsession.app"]\n  end\n\n  zap trash: [\n    "~/Library/Preferences/com.ryan.gsession.plist",\n  ]\nend\n' "$VERSION" "$SHA256" | base64)
-          gh api -X PUT repos/bzantium/homebrew-globalsession/contents/Casks/globalsession.rb \
-            -f message="Update cask to v${VERSION}" \
-            -f content="$CONTENT" \
-            -f sha="$CASK_SHA"

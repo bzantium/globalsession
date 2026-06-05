@@ -74,11 +74,38 @@ struct MenuBarPopover: View {
 
             Spacer()
 
+            refreshButton
+
             if viewModel.connectionState == .connected && !viewModel.isRestarting && !viewModel.isVPNToggling {
                 modeToggle
             }
         }
         .padding(12)
+    }
+
+    // MARK: - Refresh
+
+    @State private var isRefreshHovered = false
+
+    private var refreshButton: some View {
+        Group {
+            if viewModel.isRefreshing {
+                ProgressView()
+                    .controlSize(.small)
+                    .scaleEffect(0.5)
+            } else {
+                Image(systemName: "arrow.clockwise")
+                    .font(.caption)
+                    .foregroundColor(isRefreshHovered && !viewModel.isBusy ? .white : .secondary)
+            }
+        }
+        .frame(width: 18, height: 18)
+        .contentShape(Rectangle())
+        .help("Refresh connection status")
+        .onHover { isRefreshHovered = $0 }
+        .onTapGesture {
+            if !viewModel.isBusy && !viewModel.isRefreshing { viewModel.refresh() }
+        }
     }
 
     private var statusDotColor: Color {
@@ -336,23 +363,50 @@ struct MenuBarPopover: View {
     }
 
     @State private var isQuitHovered = false
+    @State private var isRestartAppHovered = false
 
     private var footerSection: some View {
-        HStack {
+        HStack(spacing: 0) {
+            // Quit
             Text("Quit")
                 .font(.caption)
                 .foregroundColor(.white)
-            Spacer()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(isQuitHovered ? Color.white.opacity(0.1) : Color.clear)
+                .contentShape(Rectangle())
+                .onHover { isQuitHovered = $0 }
+                .onTapGesture { NSApplication.shared.terminate(nil) }
+
+            // Restart the GlobalProtect GUI process (fix for a stuck menu-bar app)
+            HStack(spacing: 4) {
+                if viewModel.isRestartingApp {
+                    ProgressView()
+                        .controlSize(.small)
+                        .scaleEffect(0.5)
+                        .frame(width: 12, height: 12)
+                } else {
+                    Image(systemName: "arrow.clockwise.circle")
+                        .font(.caption2)
+                }
+                Text(viewModel.isRestartingApp ? "Restarting GP..." : "Restart GP")
+                    .font(.caption)
+            }
+            .foregroundColor(restartAppDisabled ? .gray.opacity(0.5) : (isRestartAppHovered ? .white : .secondary))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(isRestartAppHovered && !restartAppDisabled ? Color.white.opacity(0.1) : Color.clear)
+            .contentShape(Rectangle())
+            .help("Quit and relaunch the GlobalProtect app (keeps the VPN connected)")
+            .onHover { isRestartAppHovered = $0 }
+            .onTapGesture { if !restartAppDisabled { viewModel.restartGPProcess() } }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(
-            (isQuitHovered ? Color.white.opacity(0.1) : Color.clear)
-                .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: 12, bottomTrailingRadius: 12))
-        )
-        .contentShape(Rectangle())
-        .onHover { isQuitHovered = $0 }
-        .onTapGesture { NSApplication.shared.terminate(nil) }
+        .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: 12, bottomTrailingRadius: 12))
+    }
+
+    private var restartAppDisabled: Bool {
+        viewModel.isRestartingApp || viewModel.isVPNToggling || viewModel.isBusy
     }
 }
 

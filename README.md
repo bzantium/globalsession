@@ -29,14 +29,18 @@ gsession is a lightweight macOS menu bar utility that monitors your GlobalProtec
 
 ## Install
 
-### Homebrew (recommended)
+### From source (recommended)
+
+Builds a Release version and installs it to `/Applications`, signed with a stable
+local identity so the Accessibility permission persists across updates.
 
 ```bash
-brew tap bzantium/globalsession
-brew install --cask globalsession
+git clone https://github.com/bzantium/globalsession.git
+cd globalsession
+./scripts/release.sh
 ```
 
-### Manual
+### Manual (DMG)
 
 Download the latest `.dmg` from [Releases](https://github.com/bzantium/globalsession/releases), open it, and drag **gsession** to Applications.
 
@@ -50,17 +54,18 @@ Download the latest `.dmg` from [Releases](https://github.com/bzantium/globalses
 
 ## Build from Source
 
+Run a debug build for development:
+
 ```bash
 git clone https://github.com/bzantium/globalsession.git
 cd globalsession
 ./scripts/dev.sh
 ```
 
-Or build a DMG installer:
+Install a Release build to `/Applications`:
 
 ```bash
-brew install create-dmg
-./scripts/build-dmg.sh
+./scripts/release.sh
 ```
 
 ## License

@@ -14,7 +14,18 @@ final class MenuBarViewModel: ObservableObject {
     private let vpnControl = VPNControlService()
     @Published var isVPNToggling = false
     @Published var isRestarting = false
+    @Published var isRestartingApp = false
+    @Published var isRefreshing = false
     @Published var restartStatus: String?
+
+    /// Consecutive policy-fetch failures. The policy endpoint returns 200 only
+    /// through the tunnel, so a sustained failure is an authoritative disconnect
+    /// signal that may override a stale log (defense in depth for the log parser).
+    private var policyFailureStreak = 0
+    private static let policyFailureThreshold = 3
+    /// Set once the policy probe has confirmed the tunnel is down. While true, a
+    /// stale "connected" log line must not flip the UI back to connected.
+    private var policyConfirmedDown = false
     private var logTimer: Timer?
     private var errorDismissTask: Task<Void, Never>?
     private var policyTimer: Timer?
@@ -197,6 +208,42 @@ final class MenuBarViewModel: ObservableObject {
         }
     }
 
+    /// Kills and relaunches the GlobalProtect GUI app (not the VPN service).
+    /// Use when the menu-bar UI is stuck. The VPN tunnel stays connected.
+    func restartGPProcess() {
+        guard !isVPNToggling, !isBusy, !isRestartingApp else { return }
+        isRestartingApp = true
+        isBusy = true
+        lastError = nil
+        Task {
+            do {
+                try await vpnControl.restartGlobalProtectApp()
+                // Give the relaunched GUI a moment to register its menu-bar item
+                // before allowing AppleScript-driven actions again.
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+            } catch {
+                await MainActor.run { showError("Failed to restart GlobalProtect: \(error.localizedDescription)") }
+            }
+            await MainActor.run {
+                isRestartingApp = false
+                isBusy = false
+            }
+        }
+    }
+
+    /// Forces an immediate re-evaluation of connection state (log + policy),
+    /// bypassing the poll timers. Backing for the refresh button.
+    func refresh() {
+        guard !isBusy, !isRefreshing else { return }
+        isRefreshing = true
+        lastError = nil
+        checkLog()
+        Task {
+            await forceCheckPolicy()
+            await MainActor.run { isRefreshing = false }
+        }
+    }
+
     private func showError(_ message: String) {
         lastError = message
         errorDismissTask?.cancel()
@@ -231,7 +278,10 @@ final class MenuBarViewModel: ObservableObject {
         if sessionManager.isExpired {
             connectionState = .disconnected
             policyMode = .unknown
-        } else if logConnected && connectionState != .connected {
+        } else if logConnected && connectionState != .connected && !policyConfirmedDown {
+            // Trust a log "connected" only when the policy probe hasn't confirmed
+            // the tunnel is down — otherwise a stale log line would resurrect a
+            // false "VPN Connected".
             connectionState = .connected
         } else if !logConnected && connectionState == .connected {
             connectionState = .disconnected
@@ -250,10 +300,26 @@ final class MenuBarViewModel: ObservableObject {
         guard !sessionManager.isExpired else { return }
         do {
             let response = try await policyService.fetchPolicy()
+            policyFailureStreak = 0
+            policyConfirmedDown = false
             connectionState = .connected
             policyMode = PolicyMode(from: response.policy)
         } catch {
-            if !sessionManager.isConnectedViaLog {
+            policyFailureStreak += 1
+            // A failed policy fetch is ambiguous: the endpoint is unreachable both
+            // when the VPN is down AND when the VPN is up but the policy server
+            // itself is down. The kernel routing table breaks the tie — while
+            // GlobalProtect is connected it owns the default route (a utun).
+            let tunnelUp = await Task.detached { NetworkRoute.defaultRouteIsTunnel() }.value
+            if tunnelUp {
+                // VPN is genuinely up; only the policy server is unreachable.
+                // Stay connected and keep the last known mode until it returns.
+                policyConfirmedDown = false
+                connectionState = .connected
+            } else if !sessionManager.isConnectedViaLog || policyFailureStreak >= Self.policyFailureThreshold {
+                // Tunnel is gone and either the log agrees or the failure is
+                // sustained — authoritatively disconnected.
+                policyConfirmedDown = true
                 connectionState = .disconnected
                 policyMode = .unknown
             }

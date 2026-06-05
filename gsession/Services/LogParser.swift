@@ -5,8 +5,15 @@ final class LogParser {
         pattern: #"^(\d{2}/\d{2}/\d{4} \d{2}:\d{2}:\d{2}):\d+ \[Info \]: portal status is Connected\.$"#,
         options: .anchorsMatchLines
     )
+    // Matches any log line indicating the tunnel went down. Kept deliberately
+    // broad — GlobalProtect emits many disconnect phrasings and an incomplete
+    // allowlist is what caused the stale "VPN Connected" bug. In particular
+    // "Tunnel is down due to ..." matches ANY reason (not a fixed enum), and
+    // "User disconnecting tunnel starts" is the earliest signal of a manual
+    // disconnect (it may be the only line if GP hangs before completing).
+    // Inner groups are non-capturing so group 1 stays the timestamp.
     private static let disconnectPattern = try! NSRegularExpression(
-        pattern: #"^(\d{2}/\d{2}/\d{4} \d{2}:\d{2}:\d{2}):\d+ \[Info \]: (Tunnel is down due to (disconnection|network change|keep-alive timeout)\.|Tunnel retry done: (failed retry|received disconnect)|User was logged out of Gateway .+\.|GlobalProtect service stopped\.)$"#,
+        pattern: #"^(\d{2}/\d{2}/\d{4} \d{2}:\d{2}:\d{2}):\d+ \[Info \]: (?:Tunnel is down due to .+|Tunnel retry done: (?:failed retry|received disconnect)|User was logged out of Gateway .+|User disconnecting tunnel starts|GlobalProtect service stopped\.|portal status is Invalid portal\.)$"#,
         options: .anchorsMatchLines
     )
 
@@ -20,7 +27,13 @@ final class LogParser {
     func parseLatestSession() -> SessionInfo? {
         guard let data = readLogTail() else { return nil }
         guard let content = String(data: data, encoding: .utf8) else { return nil }
+        return Self.latestSession(in: content)
+    }
 
+    /// Pure parsing core: given raw log text, return the active session (or nil
+    /// if the latest connect has been superseded by a later disconnect event).
+    /// Separated from file I/O so it can be unit-tested with fixture content.
+    static func latestSession(in content: String) -> SessionInfo? {
         var lastConnect: Date?
         var lastDisconnect: Date?
         let nsContent = content as NSString
