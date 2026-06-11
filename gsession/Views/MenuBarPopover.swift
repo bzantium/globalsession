@@ -236,7 +236,10 @@ struct MenuBarPopover: View {
     private var progressFraction: CGFloat {
         let remaining = viewModel.sessionManager.remainingSeconds
         guard remaining > 0 else { return 0 }
-        return CGFloat(remaining / AppConstants.sessionDuration)
+        // Scale by the actual session length (from GP) so the bar starts full
+        // and drains over the real ~10h lifetime, not the fallback constant.
+        let total = viewModel.sessionManager.sessionInfo?.totalDuration ?? AppConstants.sessionDuration
+        return CGFloat(min(1, remaining / total))
     }
 
     // MARK: - Disconnected

@@ -237,6 +237,9 @@ final class MenuBarViewModel: ObservableObject {
         guard !isBusy, !isRefreshing else { return }
         isRefreshing = true
         lastError = nil
+        // Force a re-read of the session expiry (routine polling reuses the
+        // cached value for the life of a connection).
+        sessionManager.invalidateExpiryCache()
         checkLog()
         Task {
             await forceCheckPolicy()

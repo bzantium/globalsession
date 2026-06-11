@@ -66,9 +66,24 @@ enum TimerAlertLevel {
 
 struct SessionInfo {
     let connectTime: Date
+    /// Server-authoritative expiry from GlobalProtect's gateway config
+    /// (`<user_expires>` in PanGPS.log). `nil` when it couldn't be read, in
+    /// which case we fall back to a fixed `sessionDuration`.
+    let expiry: Date?
+
+    init(connectTime: Date, expiry: Date? = nil) {
+        self.connectTime = connectTime
+        self.expiry = expiry
+    }
 
     var expiryTime: Date {
-        connectTime.addingTimeInterval(AppConstants.sessionDuration)
+        expiry ?? connectTime.addingTimeInterval(AppConstants.sessionDuration)
+    }
+
+    /// Total session length, used to scale the countdown progress bar so it
+    /// reflects the real lifetime (~10h) rather than the fallback constant.
+    var totalDuration: TimeInterval {
+        max(1, expiryTime.timeIntervalSince(connectTime))
     }
 
     var remainingSeconds: TimeInterval {

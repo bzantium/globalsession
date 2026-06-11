@@ -9,6 +9,11 @@ final class SessionManager: ObservableObject {
     let logParser = LogParser()
     private var countdownTimer: Timer?
 
+    // Cache the (expensive) PanGPS.log expiry lookup, refreshing it only when a
+    // new connection appears — the expiry is fixed for the life of a session.
+    private var cachedExpiryConnectTime: Date?
+    private var cachedExpiry: Date?
+
     var isConnectedViaLog: Bool {
         logParser.parseLatestSession() != nil
     }
@@ -27,8 +32,44 @@ final class SessionManager: ObservableObject {
         countdownTimer = nil
     }
 
+    /// Drops the cached expiry so the next `refreshSessionInfo()` re-reads
+    /// PanGPS.log. The expiry is normally cached for the life of a connection
+    /// (keyed on connectTime); this forces a re-read to pick up a mid-session
+    /// lifetime change that routine polling would otherwise skip. Backs the
+    /// manual refresh button.
+    func invalidateExpiryCache() {
+        cachedExpiryConnectTime = nil
+    }
+
     func refreshSessionInfo() {
-        sessionInfo = logParser.parseLatestSession()
+        guard let base = logParser.parseLatestSession() else {
+            sessionInfo = nil
+            updateTimerState()
+            return
+        }
+
+        // Re-read the expiry from PanGPS.log only when the connection is new;
+        // for an ongoing session the cached value is reused every tick.
+        if cachedExpiryConnectTime != base.connectTime {
+            if let parsed = logParser.parseSessionExpiry(),
+               let blockTime = parsed.blockTime,
+               blockTime >= base.connectTime,
+               parsed.expiry > base.connectTime {
+                // The gateway config block was logged at/after this connect, so
+                // its <user_expires> belongs to the current session — lock it in.
+                cachedExpiry = parsed.expiry
+                cachedExpiryConnectTime = base.connectTime
+            } else {
+                // A fresh connect writes <user_expires> a few seconds after the
+                // connect event (and any expiry already in the log is from the
+                // previous session). Use the fallback for now and retry on the
+                // next tick — deliberately NOT caching, so connectTime stays
+                // "unseen" until the real block appears.
+                cachedExpiry = nil
+            }
+        }
+
+        sessionInfo = SessionInfo(connectTime: base.connectTime, expiry: cachedExpiry)
         updateTimerState()
     }
 
