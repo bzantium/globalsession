@@ -11,9 +11,17 @@ final class LogParser {
     // "Tunnel is down due to ..." matches ANY reason (not a fixed enum), and
     // "User disconnecting tunnel starts" is the earliest signal of a manual
     // disconnect (it may be the only line if GP hangs before completing).
+    //
+    // EXCEPTION: "Tunnel is down due to network change" is transient — GP
+    // silently re-establishes the tunnel (no new "portal status is Connected")
+    // and the login session survives it, so treating it as terminal produced a
+    // false "disconnected" and a broken session timer. It is excluded here via
+    // negative lookahead; a network change that does NOT recover is still caught
+    // by the policy/route probe in the view model (defense in depth).
+    //
     // Inner groups are non-capturing so group 1 stays the timestamp.
     private static let disconnectPattern = try! NSRegularExpression(
-        pattern: #"^(\d{2}/\d{2}/\d{4} \d{2}:\d{2}:\d{2}):\d+ \[Info \]: (?:Tunnel is down due to .+|Tunnel retry done: (?:failed retry|received disconnect)|User was logged out of Gateway .+|User disconnecting tunnel starts|GlobalProtect service stopped\.|portal status is Invalid portal\.)$"#,
+        pattern: #"^(\d{2}/\d{2}/\d{4} \d{2}:\d{2}:\d{2}):\d+ \[Info \]: (?:Tunnel is down due to (?!network change\.$).+|Tunnel retry done: (?:failed retry|received disconnect)|User was logged out of Gateway .+|User disconnecting tunnel starts|GlobalProtect service stopped\.|portal status is Invalid portal\.)$"#,
         options: .anchorsMatchLines
     )
 

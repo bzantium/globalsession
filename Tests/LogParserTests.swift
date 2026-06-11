@@ -41,10 +41,27 @@ check("D: disconnect then reconnect", """
 06/05/2026 09:00:00:000 [Info ]: portal status is Connected.
 """, expectConnected: true)
 
-// E) Regression: known disconnect reason still detected.
+// E) Regression: a genuinely terminal tunnel-down reason is still detected.
 check("E: known tunnel-down reason", """
 06/05/2026 09:17:50:805 [Info ]: portal status is Connected.
-06/05/2026 09:20:00:000 [Info ]: Tunnel is down due to network change.
+06/05/2026 09:20:00:000 [Info ]: Tunnel is down due to disconnection.
+""", expectConnected: false)
+
+// I) THE BUG: "network change" is transient — GP silently re-establishes the
+//    tunnel without a new "portal status is Connected", and the login session
+//    survives it. Treating it as terminal caused a false "disconnected" + a
+//    broken session timer. The route/policy probe remains the safety net for a
+//    network change that does NOT recover.
+check("I: network change is transient (session survives)", """
+06/11/2026 09:11:31:336 [Info ]: portal status is Connected.
+06/11/2026 16:57:38:494 [Info ]: Tunnel is down due to network change.
+""", expectConnected: true)
+
+// J) Regression: a network change FOLLOWED by a real logout is still down.
+check("J: network change then logout", """
+06/11/2026 09:11:31:336 [Info ]: portal status is Connected.
+06/11/2026 16:57:38:494 [Info ]: Tunnel is down due to network change.
+06/11/2026 16:58:00:000 [Info ]: User was logged out of Gateway gw.example.com.
 """, expectConnected: false)
 
 // MARK: - Session expiry parsing (PanGPS.log <user_expires>)

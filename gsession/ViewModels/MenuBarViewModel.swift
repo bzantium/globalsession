@@ -286,7 +286,12 @@ final class MenuBarViewModel: ObservableObject {
             // the tunnel is down — otherwise a stale log line would resurrect a
             // false "VPN Connected".
             connectionState = .connected
-        } else if !logConnected && connectionState == .connected {
+        } else if !logConnected && connectionState == .connected && policyConfirmedDown {
+            // Only tear down to disconnected when the authoritative policy/route
+            // probe agrees. The log alone can produce false negatives (GP
+            // silently re-establishes the tunnel after a transient drop without
+            // logging a new connect), which previously fought the 5s policy poll
+            // and made the icon blink connected<->disconnected every cycle.
             connectionState = .disconnected
             policyMode = .unknown
         }
