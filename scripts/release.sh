@@ -12,7 +12,8 @@ set -e
 
 APP_NAME="gsession"
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-BUILD_DIR="${PROJECT_DIR}/build/ReleaseDD"
+# `.noindex` suffix keeps Spotlight from indexing the intermediate build copy.
+BUILD_DIR="${PROJECT_DIR}/build/ReleaseDD.noindex"
 APP_SRC="${BUILD_DIR}/Build/Products/Release/${APP_NAME}.app"
 INSTALL_PATH="/Applications/${APP_NAME}.app"
 SIGN_ID="GlobalSession Dev"   # stable self-signed identity; label is historical
@@ -57,10 +58,12 @@ fi
 codesign --verify --strict "$INSTALL_PATH"
 AUTHORITY=$(codesign -dvv "$INSTALL_PATH" 2>&1 | awk -F= '/^Authority=/{print $2; exit}')
 
-# Keep the intermediate build-dir copy from registering as a second "installed"
-# app (which is what caused the confusing duplicate in launchers/Spotlight).
-LSREGISTER="/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister"
-[ -x "$LSREGISTER" ] && "$LSREGISTER" -u "$APP_SRC" >/dev/null 2>&1 || true
+# The app is now installed in /Applications, so the intermediate build copy is
+# disposable. Delete it outright — leaving it on disk is what caused the
+# confusing duplicate in launchers/Spotlight (lsregister -u alone didn't help,
+# since Spotlight re-indexes any .app still present on disk). The compiled
+# objects under the derived-data dir stay, so incremental rebuilds remain fast.
+rm -rf "$APP_SRC"
 
 echo "==> Launching..."
 open "$INSTALL_PATH"
