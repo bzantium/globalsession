@@ -3,7 +3,9 @@ set -e
 
 APP_NAME="gsession"
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-BUILD_DIR="${PROJECT_DIR}/build/DerivedData"
+# `.noindex` suffix keeps Spotlight from indexing this Debug build, so the
+# dev app doesn't show up as a duplicate alongside the /Applications install.
+BUILD_DIR="${PROJECT_DIR}/build/DerivedData.noindex"
 APP_PATH="${BUILD_DIR}/Build/Products/Debug/${APP_NAME}.app"
 # Stable self-signed identity. MUST be a real identity (not ad-hoc): an ad-hoc
 # signature's cdhash changes on every build, which silently invalidates the TCC
