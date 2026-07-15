@@ -85,8 +85,15 @@ final class MenuBarViewModel: ObservableObject {
         isBusy = true
         Task {
             do {
-                try await vpnControl.perform(.connect)
-                await policyService.waitForStability()
+                // The popover control is a toggle clicked by position, so skip it
+                // when the (authoritative, locale-free) GlobalProtect log already
+                // reports the target state — otherwise a stale connectionState
+                // would toggle the wrong way and disconnect a live session.
+                let alreadyConnected = await MainActor.run { sessionManager.isConnectedViaLog }
+                if !alreadyConnected {
+                    try await vpnControl.perform(.connect)
+                    await policyService.waitForStability()
+                }
                 // Set connected state before clearing flags to avoid flash
                 await MainActor.run { connectionState = .connected }
             } catch {
@@ -105,15 +112,21 @@ final class MenuBarViewModel: ObservableObject {
         isBusy = true
         Task {
             do {
-                try await vpnControl.perform(.disconnect)
-                // Wait until VPN is actually disconnected
-                for _ in 0..<15 {
-                    try? await Task.sleep(nanoseconds: 1_000_000_000)
-                    let stillConnected = await MainActor.run {
-                        sessionManager.refreshSessionInfo()
-                        return sessionManager.isConnectedViaLog
+                // Skip the toggle if the GlobalProtect log already reports
+                // disconnected — clicking it then would connect instead (see
+                // connectVPN for the rationale).
+                let alreadyDisconnected = await MainActor.run { !sessionManager.isConnectedViaLog }
+                if !alreadyDisconnected {
+                    try await vpnControl.perform(.disconnect)
+                    // Wait until VPN is actually disconnected
+                    for _ in 0..<15 {
+                        try? await Task.sleep(nanoseconds: 1_000_000_000)
+                        let stillConnected = await MainActor.run {
+                            sessionManager.refreshSessionInfo()
+                            return sessionManager.isConnectedViaLog
+                        }
+                        if !stillConnected { break }
                     }
-                    if !stillConnected { break }
                 }
                 await MainActor.run {
                     connectionState = .disconnected
