@@ -171,9 +171,7 @@ final class MenuBarViewModel: ObservableObject {
             // session; but if the session has expired, that same click hands off to
             // GlobalProtect's own sign-in flow (browser / credentials / MFA). We
             // must NOT retry the click — a second click would disrupt or cancel that
-            // sign-in — so we click once and wait. If the tunnel doesn't come up in
-            // time, the user most likely needs to finish signing in; we say so and
-            // let routine log polling flip the UI to connected once they do.
+            // sign-in — so we click once and wait on the log.
             await MainActor.run { restartStatus = "Reconnecting..." }
             do {
                 try await vpnControl.perform(.connect)
@@ -181,13 +179,24 @@ final class MenuBarViewModel: ObservableObject {
                 await endRestart(error: "Restart failed during reconnect: \(error.localizedDescription)")
                 return
             }
-            if await waitForLog(connected: true, seconds: 40) {
+
+            // A valid session reconnects from its cached cookie within a few
+            // seconds. If it hasn't after a short window, the session has expired
+            // and GlobalProtect is now waiting on the user to sign in — so switch to
+            // a patient "waiting for sign-in" state (no browser/window to detect
+            // reliably; the delay itself is the signal) and give them time to
+            // finish. Either wait returns the instant the log reports connected.
+            var reconnected = await waitForLog(connected: true, seconds: 15)
+            if !reconnected {
+                await MainActor.run { restartStatus = "Waiting for sign-in…" }
+                reconnected = await waitForLog(connected: true, seconds: 120)
+            }
+
+            if reconnected {
                 await MainActor.run { connectionState = .connected }
                 await endRestart()
             } else {
-                // Not up yet — expired session waiting on sign-in is the usual
-                // reason. Don't re-click; let the user finish authenticating.
-                await endRestart(error: "Almost there — sign in to GlobalProtect to finish reconnecting.")
+                await endRestart(error: "Sign-in didn't finish — reconnect from GlobalProtect when you're ready.")
             }
         }
     }
