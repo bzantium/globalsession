@@ -150,74 +150,75 @@ final class MenuBarViewModel: ObservableObject {
         restartStatus = "Disconnecting..."
         lastError = nil
         Task {
-
-            // Step 1: Disconnect
-            // The AppleScript may throw (timeout, permission error) even though it
-            // partially succeeded (clicked the disconnect button). So on failure,
-            // poll the log to see if the VPN actually disconnected before giving up.
-            do {
-                try await vpnControl.perform(.disconnect)
-            } catch {
-                // Script errored – but the VPN might still be disconnecting.
-                // Wait up to 10 seconds, checking every second.
-                var disconnected = false
-                for _ in 0..<10 {
-                    try? await Task.sleep(nanoseconds: 1_000_000_000)
-                    let stillConnected = await MainActor.run {
-                        sessionManager.refreshSessionInfo()
-                        return sessionManager.isConnectedViaLog
-                    }
-                    if !stillConnected {
-                        disconnected = true
-                        break
-                    }
-                }
-                if !disconnected {
-                    await MainActor.run {
-                        showError("Restart failed during disconnect: \(error.localizedDescription)")
-                        isVPNToggling = false
-                        isBusy = false
-                        isRestarting = false
-                        restartStatus = nil
-                    }
+            // Step 1 & 2: Disconnect, then confirm via the log. The click may throw
+            // yet still have taken effect (and is a toggle clicked by position), so
+            // we don't trust its result — we poll the log. Restart is only offered
+            // while connected, but guard anyway so we never toggle the wrong way.
+            let startedConnected = await MainActor.run { sessionManager.isConnectedViaLog }
+            if startedConnected {
+                try? await vpnControl.perform(.disconnect)
+                await MainActor.run { restartStatus = "Settling..." }
+                if !(await waitForLog(connected: false, seconds: 15)) {
+                    await endRestart(error: "Restart failed: the VPN did not disconnect.")
                     return
                 }
-                // VPN did disconnect despite the script error – continue restart flow.
+                // Brief settle so GlobalProtect will accept a fresh connect.
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
             }
 
-            // Step 2: Wait for VPN to fully disconnect (confirmed via log)
-            await MainActor.run { restartStatus = "Settling..." }
-            for _ in 0..<15 {
-                try? await Task.sleep(nanoseconds: 1_000_000_000)
-                let stillConnected = await MainActor.run {
-                    sessionManager.refreshSessionInfo()
-                    return sessionManager.isConnectedViaLog
-                }
-                if !stillConnected { break }
-            }
-            try? await Task.sleep(nanoseconds: 2_000_000_000) // extra settle time
-
-            // Step 3: Reconnect
+            // Step 3: Reconnect with a single click, then confirm via the log.
+            // After a confirmed disconnect one click reconnects a still-valid
+            // session; but if the session has expired, that same click hands off to
+            // GlobalProtect's own sign-in flow (browser / credentials / MFA). We
+            // must NOT retry the click — a second click would disrupt or cancel that
+            // sign-in — so we click once and wait. If the tunnel doesn't come up in
+            // time, the user most likely needs to finish signing in; we say so and
+            // let routine log polling flip the UI to connected once they do.
             await MainActor.run { restartStatus = "Reconnecting..." }
             do {
                 try await vpnControl.perform(.connect)
             } catch {
-                await MainActor.run {
-                    showError("Restart failed during reconnect: \(error.localizedDescription)")
-                    isVPNToggling = false
-                    isBusy = false
-                    isRestarting = false
-                    restartStatus = nil
-                }
+                await endRestart(error: "Restart failed during reconnect: \(error.localizedDescription)")
                 return
             }
-
-            await MainActor.run {
-                isVPNToggling = false
-                isBusy = false
-                isRestarting = false
-                restartStatus = nil
+            if await waitForLog(connected: true, seconds: 40) {
+                await MainActor.run { connectionState = .connected }
+                await endRestart()
+            } else {
+                // Not up yet — expired session waiting on sign-in is the usual
+                // reason. Don't re-click; let the user finish authenticating.
+                await endRestart(error: "Almost there — sign in to GlobalProtect to finish reconnecting.")
             }
+        }
+    }
+
+    /// Polls the GlobalProtect log once a second for up to `seconds`, returning
+    /// true as soon as it reports the desired `connected` state (and false if the
+    /// window elapses first). The log is the authoritative, locale-free signal for
+    /// tunnel state, so both the disconnect and reconnect steps of a restart wait
+    /// on it rather than trusting the AppleScript click's return.
+    private func waitForLog(connected target: Bool, seconds: Int) async -> Bool {
+        for _ in 0..<seconds {
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            let connected = await MainActor.run {
+                sessionManager.refreshSessionInfo()
+                return sessionManager.isConnectedViaLog
+            }
+            if connected == target { return true }
+        }
+        return false
+    }
+
+    /// Clears the restart flags (and optionally surfaces an error) on the main
+    /// actor. Every restart exit path funnels through here so none can leave the
+    /// UI stuck in the "Restarting…" state.
+    private func endRestart(error: String? = nil) async {
+        await MainActor.run {
+            if let error { showError(error) }
+            isVPNToggling = false
+            isBusy = false
+            isRestarting = false
+            restartStatus = nil
         }
     }
 

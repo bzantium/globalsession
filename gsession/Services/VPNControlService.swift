@@ -38,6 +38,7 @@ final class VPNControlService {
                     tell menu bar item 1 of menu bar 2 to click
                 end if
                 repeat 100 times
+                    set didClick to false
                     try
                         if exists window 1 then
                             set primary to missing value
@@ -57,11 +58,18 @@ final class VPNControlService {
                             end repeat
                             -- >100pt selects the full-width toggle, never a stray icon.
                             if primary is not missing value and widest > 100 then
-                                click primary
-                                return "ok"
+                                -- Toggling the VPN dismisses the popover, which can make
+                                -- the `click` command itself error even though the click
+                                -- registered. Swallow that and still report success —
+                                -- otherwise a successful action is reported as a timeout.
+                                try
+                                    click primary
+                                end try
+                                set didClick to true
                             end if
                         end if
                     end try
+                    if didClick then return "ok"
                     delay 0.05
                 end repeat
                 return "timeout"
