@@ -64,6 +64,30 @@ check("J: network change then logout", """
 06/11/2026 16:58:00:000 [Info ]: User was logged out of Gateway gw.example.com.
 """, expectConnected: false)
 
+// K) A transport failure can recover without a fresh portal Connected event.
+//    The original connect time must survive so the gateway expiry remains tied
+//    to the real login session rather than restarting the countdown at restore.
+let restoredSession = LogParser.latestSession(in: """
+06/11/2026 09:11:31:336 [Info ]: portal status is Connected.
+06/11/2026 16:18:28:562 [Info ]: Tunnel is down due to packet sending failure.
+06/11/2026 18:01:25:071 [Info ]: Tunnel is restored.
+""")
+let restoredFormatter = DateFormatter()
+restoredFormatter.dateFormat = "MM/dd/yyyy HH:mm:ss"
+restoredFormatter.locale = Locale(identifier: "en_US_POSIX")
+let expectedOriginalConnect = restoredFormatter.date(from: "06/11/2026 09:11:31")
+let restoredOK = restoredSession?.connectTime == expectedOriginalConnect
+print("\(restoredOK ? "PASS" : "FAIL") — K: restored tunnel preserves original session start")
+if !restoredOK { failures += 1 }
+
+// L) A later real disconnect still wins over an earlier successful restore.
+check("L: restored tunnel then manual disconnect", """
+06/11/2026 09:11:31:336 [Info ]: portal status is Connected.
+06/11/2026 16:18:28:562 [Info ]: Tunnel is down due to packet sending failure.
+06/11/2026 18:01:25:071 [Info ]: Tunnel is restored.
+06/11/2026 18:30:00:000 [Info ]: User disconnecting tunnel starts
+""", expectConnected: false)
+
 // MARK: - Session expiry parsing (PanGPS.log <user_expires>)
 
 func checkExpiry(_ name: String, _ content: String, expectEpoch: TimeInterval?, expectBlock: String? = nil) {

@@ -40,7 +40,7 @@ struct MenuBarPopover: View {
                         .controlSize(.small)
                         .scaleEffect(0.5)
                         .frame(width: 12, height: 12)
-                    ShimmerText("Stabilizing VPN...")
+                    ShimmerText(viewModel.isRestartingApp ? "Restarting GlobalProtect..." : "Stabilizing VPN...")
                 }
                 .padding(12)
                 Divider()
@@ -54,7 +54,7 @@ struct MenuBarPopover: View {
                 Divider()
             }
 
-            footerSection
+            queryPieSection
         }
         .frame(width: 280)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
@@ -119,8 +119,8 @@ struct MenuBarPopover: View {
             return viewModel.connectionState == .connected ? "Disconnecting..." : "Connecting..."
         }
         switch viewModel.connectionState {
-        case .connected: return "VPN Connected"
-        case .disconnected: return "VPN Disconnected"
+        case .connected: return "Connected"
+        case .disconnected: return "Disconnected"
         case .unknown: return "Checking..."
         }
     }
@@ -224,6 +224,7 @@ struct MenuBarPopover: View {
     }
 
     private var timerText: String {
+        guard viewModel.sessionManager.sessionInfo != nil else { return "Unavailable" }
         let remaining = viewModel.sessionManager.remainingSeconds
         guard remaining > 0 else { return "Expired" }
         let total = max(0, Int(remaining))
@@ -240,6 +241,101 @@ struct MenuBarPopover: View {
         // and drains over the real ~10h lifetime, not the fallback constant.
         let total = viewModel.sessionManager.sessionInfo?.totalDuration ?? AppConstants.sessionDuration
         return CGFloat(min(1, remaining / total))
+    }
+
+    // MARK: - QueryPie Session
+
+    @State private var isQueryPieOpenHovered = false
+
+    private var queryPieSection: some View {
+        let manager = viewModel.queryPieSessionManager
+
+        return VStack(spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: "lock.shield")
+                    .font(.caption)
+                    .foregroundColor(queryPieStatusColor)
+                Text("QueryPie")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundColor(.white)
+
+                Spacer()
+
+                Text(queryPieTimerText)
+                    .font(.system(.body, design: .monospaced))
+                    .fontWeight(.medium)
+                    .foregroundColor(queryPieStatusColor)
+            }
+
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(queryPieStatusColor)
+                    .frame(width: 6, height: 6)
+                Text(queryPieStatusText)
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+
+                if manager.isAuthenticated, let expiry = manager.expiry {
+                    Text("·")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                    Text("until \(expiry, format: .dateTime.hour().minute())")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+
+                Spacer()
+
+                Text(manager.isRunning ? "Show" : "Open")
+                    .font(.caption2)
+                    .fontWeight(.medium)
+                    .foregroundColor(isQueryPieOpenHovered && manager.isInstalled ? .white : .secondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(
+                        RoundedRectangle(cornerRadius: 5)
+                            .fill(isQueryPieOpenHovered && manager.isInstalled ? Color.white.opacity(0.12) : Color.clear)
+                    )
+                    .contentShape(Rectangle())
+                    .help(manager.isInstalled ? "Open QueryPie Multi Agent" : "QueryPie Multi Agent is not installed")
+                    .onHover { isQueryPieOpenHovered = $0 }
+                    .onTapGesture {
+                        if manager.isInstalled { manager.openApplication() }
+                    }
+            }
+        }
+        .padding(12)
+    }
+
+    private var queryPieTimerText: String {
+        let manager = viewModel.queryPieSessionManager
+        guard manager.isRunning else { return "--:--:--" }
+        guard manager.expiry != nil else { return "Checking…" }
+        guard manager.remainingSeconds > 0 else { return "Expired" }
+        return formattedDuration(manager.remainingSeconds)
+    }
+
+    private var queryPieStatusText: String {
+        let manager = viewModel.queryPieSessionManager
+        if !manager.isInstalled { return "Not installed" }
+        if !manager.isRunning { return "Not running" }
+        if manager.expiry == nil { return "Session unavailable" }
+        return manager.remainingSeconds > 0 ? "Agent session" : "Sign-in required"
+    }
+
+    private var queryPieStatusColor: Color {
+        let manager = viewModel.queryPieSessionManager
+        guard manager.isRunning, manager.expiry != nil else { return .gray }
+        return manager.alertLevel.color
+    }
+
+    private func formattedDuration(_ interval: TimeInterval) -> String {
+        let total = max(0, Int(interval))
+        let hours = total / 3600
+        let minutes = (total % 3600) / 60
+        let seconds = total % 60
+        return String(format: "%d:%02d:%02d", hours, minutes, seconds)
     }
 
     // MARK: - Disconnected
@@ -307,8 +403,6 @@ struct MenuBarPopover: View {
         .padding(12)
     }
 
-    // MARK: - Footer
-
     @State private var isRestartHovered = false
     @State private var isDisconnectHovered = false
 
@@ -365,52 +459,6 @@ struct MenuBarPopover: View {
         .onTapGesture { if !disabled { action() } }
     }
 
-    @State private var isQuitHovered = false
-    @State private var isRestartAppHovered = false
-
-    private var footerSection: some View {
-        HStack(spacing: 0) {
-            // Quit
-            Text("Quit")
-                .font(.caption)
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(isQuitHovered ? Color.white.opacity(0.1) : Color.clear)
-                .contentShape(Rectangle())
-                .onHover { isQuitHovered = $0 }
-                .onTapGesture { NSApplication.shared.terminate(nil) }
-
-            // Restart the GlobalProtect GUI process (fix for a stuck menu-bar app)
-            HStack(spacing: 4) {
-                if viewModel.isRestartingApp {
-                    ProgressView()
-                        .controlSize(.small)
-                        .scaleEffect(0.5)
-                        .frame(width: 12, height: 12)
-                } else {
-                    Image(systemName: "arrow.clockwise.circle")
-                        .font(.caption2)
-                }
-                Text(viewModel.isRestartingApp ? "Restarting GP..." : "Restart GP")
-                    .font(.caption)
-            }
-            .foregroundColor(restartAppDisabled ? .gray.opacity(0.5) : (isRestartAppHovered ? .white : .secondary))
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(isRestartAppHovered && !restartAppDisabled ? Color.white.opacity(0.1) : Color.clear)
-            .contentShape(Rectangle())
-            .help("Quit and relaunch the GlobalProtect app (keeps the VPN connected)")
-            .onHover { isRestartAppHovered = $0 }
-            .onTapGesture { if !restartAppDisabled { viewModel.restartGPProcess() } }
-        }
-        .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: 12, bottomTrailingRadius: 12))
-    }
-
-    private var restartAppDisabled: Bool {
-        viewModel.isRestartingApp || viewModel.isVPNToggling || viewModel.isBusy
-    }
 }
 
 // MARK: - Wave Gradient Animation

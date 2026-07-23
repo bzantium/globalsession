@@ -15,29 +15,20 @@ final class VPNControlService {
         // Direction is the caller's responsibility; `action` is only used for the
         // error message.
         //
-        // The popover is an NSPopover that closes the moment it loses focus, so a
-        // slow press lets a stray user click dismiss it first. To press ASAP we
-        // dismiss any stale popover, open a fresh one, then poll with no leading
-        // delay so the click lands as soon as the button is hittable.
+        // The popover is an NSPopover that closes the moment it loses focus. If it
+        // is already open, use its button directly — clicking the menu-bar item
+        // first would merely close it. If it is closed, open it. A popover that
+        // stays open without exposing a usable button for one second is treated as
+        // stale and reset once before the remaining polling attempts.
         let script = """
         tell application "System Events"
             tell process "GlobalProtect"
-                -- A popover left open by a prior action may be mid-transition and
-                -- never yield a usable button, so close it first for a fresh one.
-                if exists window 1 then
-                    tell menu bar item 1 of menu bar 2 to click
-                    repeat 20 times
-                        if not (exists window 1) then exit repeat
-                        delay 0.05
-                    end repeat
-                end if
-                -- Open only if it's actually closed. Clicking the menu-bar item is a
-                -- toggle, so an unconditional click here would *close* a popover that
-                -- refused to dismiss above, guaranteeing the press loop times out.
+                -- The menu-bar item is a toggle. Only click it when the popover is
+                -- closed; an already-open popover may be immediately actionable.
                 if not (exists window 1) then
                     tell menu bar item 1 of menu bar 2 to click
                 end if
-                repeat 100 times
+                repeat with attempt from 1 to 100
                     set didClick to false
                     try
                         if exists window 1 then
@@ -70,6 +61,23 @@ final class VPNControlService {
                         end if
                     end try
                     if didClick then return "ok"
+
+                    -- Recover once from a genuinely stale/mid-transition popover.
+                    -- This happens only after giving an existing usable button a
+                    -- full second to appear, so a normally open popup is never
+                    -- toggled closed before we try its button.
+                    if attempt is 20 then
+                        if exists window 1 then
+                            tell menu bar item 1 of menu bar 2 to click
+                            repeat 20 times
+                                if not (exists window 1) then exit repeat
+                                delay 0.05
+                            end repeat
+                        end if
+                        if not (exists window 1) then
+                            tell menu bar item 1 of menu bar 2 to click
+                        end if
+                    end if
                     delay 0.05
                 end repeat
                 return "timeout"

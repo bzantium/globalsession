@@ -1,6 +1,7 @@
 import SwiftUI
 import Combine
 
+@MainActor
 final class MenuBarViewModel: ObservableObject {
     @Published var connectionState: ConnectionState = .unknown
     @Published var policyMode: PolicyMode = .unknown
@@ -9,6 +10,7 @@ final class MenuBarViewModel: ObservableObject {
     @Published var lastError: String?
 
     let sessionManager = SessionManager()
+    let queryPieSessionManager = QueryPieSessionManager()
 
     private let policyService = PolicyService()
     private let vpnControl = VPNControlService()
@@ -34,6 +36,11 @@ final class MenuBarViewModel: ObservableObject {
 
     init() {
         sessionManager.objectWillChange
+            .receive(on: RunLoop.main)
+            .sink { [weak self] in self?.objectWillChange.send() }
+            .store(in: &cancellables)
+
+        queryPieSessionManager.objectWillChange
             .receive(on: RunLoop.main)
             .sink { [weak self] in self?.objectWillChange.send() }
             .store(in: &cancellables)
@@ -263,6 +270,7 @@ final class MenuBarViewModel: ObservableObject {
         // Force a re-read of the session expiry (routine polling reuses the
         // cached value for the life of a connection).
         sessionManager.invalidateExpiryCache()
+        queryPieSessionManager.refresh()
         checkLog()
         Task {
             await forceCheckPolicy()
@@ -283,11 +291,14 @@ final class MenuBarViewModel: ObservableObject {
 
     private func startPolling() {
         sessionManager.startMonitoring()
+        queryPieSessionManager.startMonitoring()
         checkLog()
         Task { await checkPolicy() }
 
         logTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-            self?.checkLog()
+            Task { @MainActor [weak self] in
+                self?.checkLog()
+            }
         }
 
         policyTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in

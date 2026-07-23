@@ -40,6 +40,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             button.image = templateIcon
             button.action = #selector(togglePanel)
             button.target = self
+            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         }
 
         viewModel.$policyMode
@@ -101,12 +102,64 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    @MainActor
     @objc private func togglePanel() {
+        if NSApp.currentEvent?.type == .rightMouseUp {
+            hidePanel()
+            // Wait until the right-click has fully completed before opening the
+            // menu. Presenting it inside rightMouseUp can forward that same event
+            // into a menu item and trigger an action accidentally.
+            DispatchQueue.main.async { [weak self] in
+                self?.showStatusItemMenu()
+            }
+            return
+        }
+
         if panel.isVisible {
             hidePanel()
         } else {
             showPanel()
         }
+    }
+
+    @MainActor
+    private func showStatusItemMenu() {
+        guard let button = statusItem.button else { return }
+
+        let menu = NSMenu()
+        let restartItem = NSMenuItem(
+            title: viewModel.isRestartingApp ? "Restarting GlobalProtect…" : "Restart GlobalProtect",
+            action: #selector(restartGlobalProtectFromMenu),
+            keyEquivalent: ""
+        )
+        restartItem.target = self
+        restartItem.isEnabled = !viewModel.isRestartingApp && !viewModel.isVPNToggling && !viewModel.isBusy
+        menu.addItem(restartItem)
+        menu.addItem(.separator())
+
+        let quitItem = NSMenuItem(
+            title: "Quit gsession",
+            action: #selector(quitFromMenu),
+            keyEquivalent: ""
+        )
+        quitItem.target = self
+        menu.addItem(quitItem)
+
+        // Temporarily attaching the menu lets AppKit position and track it like a
+        // native status-item menu. Remove it afterwards so left-click continues
+        // to open the custom popover.
+        statusItem.menu = menu
+        button.performClick(nil)
+        statusItem.menu = nil
+    }
+
+    @MainActor
+    @objc private func restartGlobalProtectFromMenu() {
+        viewModel.restartGPProcess()
+    }
+
+    @objc private func quitFromMenu() {
+        NSApp.terminate(nil)
     }
 
     private func showPanel() {

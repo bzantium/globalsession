@@ -25,6 +25,15 @@ final class LogParser {
         options: .anchorsMatchLines
     )
 
+    // Some tunnel failures are terminal only until GlobalProtect repairs the
+    // transport. A successful restore does not emit another portal "Connected"
+    // line and does not start a new login session, so it must override the prior
+    // tunnel-down event while preserving the original connect time/expiry.
+    private static let restorePattern = try! NSRegularExpression(
+        pattern: #"^(\d{2}/\d{2}/\d{4} \d{2}:\d{2}:\d{2}):\d+ \[Info \]: Tunnel is restored\.$"#,
+        options: .anchorsMatchLines
+    )
+
     /// Captures the absolute session expiry (Unix epoch) that the gateway
     /// pushes on every (re)connect. Lives in PanGPS.log, not the event log.
     private static let expiryPattern = try! NSRegularExpression(
@@ -57,6 +66,7 @@ final class LogParser {
     static func latestSession(in content: String) -> SessionInfo? {
         var lastConnect: Date?
         var lastDisconnect: Date?
+        var lastRestore: Date?
         let nsContent = content as NSString
         let range = NSRange(location: 0, length: nsContent.length)
 
@@ -74,9 +84,18 @@ final class LogParser {
             }
         }
 
+        Self.restorePattern.enumerateMatches(in: content, range: range) { result, _, _ in
+            guard let result, let tsRange = Range(result.range(at: 1), in: content) else { return }
+            if let date = Self.dateFormatter.date(from: String(content[tsRange])) {
+                lastRestore = date
+            }
+        }
+
         guard let connectTime = lastConnect else { return nil }
 
-        if let disconnectTime = lastDisconnect, disconnectTime > connectTime {
+        if let disconnectTime = lastDisconnect,
+           disconnectTime > connectTime,
+           lastRestore == nil || lastRestore! < disconnectTime {
             return nil // VPN is currently down
         }
 
