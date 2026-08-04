@@ -15,26 +15,54 @@ final class VPNControlService {
         // Direction is the caller's responsibility; `action` is only used for the
         // error message.
         //
+        // We must target the popover SPECIFICALLY, not "window 1": GlobalProtect
+        // also raises status/notification windows (e.g. "연결되었습니다",
+        // "만료되었습니다"). Those are AXStandardWindow (~480pt) and, when present,
+        // become window 1 — demoting the real popover to window 2. The old
+        // "window 1" logic then skipped opening the popover (a window already
+        // "existed") and clicked one of the notification's own buttons (also
+        // >100pt wide), reporting a false success while the VPN never toggled.
+        // The popover is uniquely an AXSystemDialog; `findPopover` filters on that
+        // subrole (locale-independent, unlike the window title/description) and
+        // ignores notification windows entirely.
+        //
         // The popover is an NSPopover that closes the moment it loses focus. If it
         // is already open, use its button directly — clicking the menu-bar item
         // first would merely close it. If it is closed, open it. A popover that
         // stays open without exposing a usable button for one second is treated as
         // stale and reset once before the remaining polling attempts.
         let script = """
+        on findPopover()
+            -- The menu-bar popover is the only AXSystemDialog window. Notification
+            -- windows are AXStandardWindow, so this skips them even when one is
+            -- frontmost. `size of window` reads are unreliable while a notification
+            -- is up, so we match on subrole alone — never window geometry.
+            tell application "System Events" to tell process "GlobalProtect"
+                repeat with w in windows
+                    try
+                        if (subrole of w) is "AXSystemDialog" then return w
+                    end try
+                end repeat
+            end tell
+            return missing value
+        end findPopover
+
         tell application "System Events"
             tell process "GlobalProtect"
                 -- The menu-bar item is a toggle. Only click it when the popover is
-                -- closed; an already-open popover may be immediately actionable.
-                if not (exists window 1) then
+                -- closed; an already-open popover may be immediately actionable. A
+                -- notification window does NOT count as the popover being open.
+                if (my findPopover()) is missing value then
                     tell menu bar item 1 of menu bar 2 to click
                 end if
                 repeat with attempt from 1 to 100
                     set didClick to false
                     try
-                        if exists window 1 then
+                        set pop to my findPopover()
+                        if pop is not missing value then
                             set primary to missing value
                             set widest to 0
-                            repeat with b in (every button of window 1)
+                            repeat with b in (every button of pop)
                                 if enabled of b then
                                     -- Bind `size of b` first; `item 1 of (size of b)`
                                     -- inline fails because `b` is a live `every button`
@@ -67,14 +95,14 @@ final class VPNControlService {
                     -- full second to appear, so a normally open popup is never
                     -- toggled closed before we try its button.
                     if attempt is 20 then
-                        if exists window 1 then
+                        if (my findPopover()) is not missing value then
                             tell menu bar item 1 of menu bar 2 to click
                             repeat 20 times
-                                if not (exists window 1) then exit repeat
+                                if (my findPopover()) is missing value then exit repeat
                                 delay 0.05
                             end repeat
                         end if
-                        if not (exists window 1) then
+                        if (my findPopover()) is missing value then
                             tell menu bar item 1 of menu bar 2 to click
                         end if
                     end if
