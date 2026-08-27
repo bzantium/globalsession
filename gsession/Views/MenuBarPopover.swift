@@ -340,7 +340,8 @@ struct MenuBarPopover: View {
 
     // MARK: - Disconnected
 
-    @State private var isGPHovered = false
+    @State private var isConnectDevHovered = false
+    @State private var isConnectProdHovered = false
 
     private var disconnectedSection: some View {
         VStack(spacing: 8) {
@@ -355,22 +356,32 @@ struct MenuBarPopover: View {
                         .foregroundColor(.secondary)
                 }
             } else {
-                Text("Connect VPN")
-                    .font(.caption)
-                    .fontWeight(.medium)
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(isGPHovered ? Color.green : Color.green.opacity(0.7))
-                    )
-                    .contentShape(Rectangle())
-                    .onHover { isGPHovered = $0 }
-                    .onTapGesture { viewModel.connectVPN() }
+                // Connect straight into a chosen SASE mode: connect the tunnel,
+                // then switch policy (Dev = /sase/default, Prod = /sase/prod).
+                // Button colours match the mode toggle (Dev = blue, Prod = orange).
+                HStack(spacing: 8) {
+                    connectButton(mode: .dev, hovered: isConnectDevHovered) { isConnectDevHovered = $0 }
+                    connectButton(mode: .prod, hovered: isConnectProdHovered) { isConnectProdHovered = $0 }
+                }
             }
         }
         .padding(12)
+    }
+
+    private func connectButton(mode: PolicyMode, hovered: Bool, onHover: @escaping (Bool) -> Void) -> some View {
+        Text("Connect \(mode.label)")
+            .font(.caption)
+            .fontWeight(.medium)
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 6)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(hovered ? mode.color : mode.color.opacity(0.7))
+            )
+            .contentShape(Rectangle())
+            .onHover(perform: onHover)
+            .onTapGesture { viewModel.connectVPN(mode: mode) }
     }
 
     // MARK: - Restarting

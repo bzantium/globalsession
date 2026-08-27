@@ -59,34 +59,51 @@ final class MenuBarViewModel: ObservableObject {
         guard !isSwitchingMode, !isBusy else { return }
         Task {
             await MainActor.run {
-                isSwitchingMode = true
-                switchingToProd = (mode == .prod)
                 isBusy = true
                 lastError = nil
             }
             do {
-                try await policyService.switchMode(mode)
-                await MainActor.run {
-                    policyMode = mode
-                    isSwitchingMode = false
-                    switchingToProd = nil
-                }
-                // Keep isBusy=true until correct mode is confirmed twice consecutively
-                await policyService.waitForStability(expectedMode: mode)
-                await MainActor.run { isBusy = false }
+                try await applyPolicyMode(mode)
             } catch {
-                let msg = "Failed to switch to \(mode.label): \(error.localizedDescription)"
                 await MainActor.run {
-                    self.showError(msg)
-                    isBusy = false
-                    isSwitchingMode = false
-                    switchingToProd = nil
+                    self.showError("Failed to switch to \(mode.label): \(error.localizedDescription)")
                 }
             }
+            await MainActor.run { isBusy = false }
         }
     }
 
-    func connectVPN() {
+    /// Switches the SASE policy mode over the (already-connected) tunnel and
+    /// waits for it to stabilize. The caller owns `isBusy`; this manages only the
+    /// `isSwitchingMode`/`switchingToProd` UI flags and rethrows on failure so the
+    /// caller can surface an appropriate message.
+    private func applyPolicyMode(_ mode: PolicyMode) async throws {
+        await MainActor.run {
+            isSwitchingMode = true
+            switchingToProd = (mode == .prod)
+        }
+        do {
+            try await policyService.switchMode(mode)
+            await MainActor.run {
+                policyMode = mode
+                isSwitchingMode = false
+                switchingToProd = nil
+            }
+            // Confirm the new mode is reported consistently before returning.
+            _ = await policyService.waitForStability(expectedMode: mode)
+        } catch {
+            await MainActor.run {
+                isSwitchingMode = false
+                switchingToProd = nil
+            }
+            throw error
+        }
+    }
+
+    /// Connects the VPN and, if `mode` is given, switches straight into that SASE
+    /// policy mode. The `/sase` endpoint is only reachable through the tunnel, so
+    /// the mode switch necessarily follows the connect rather than being part of it.
+    func connectVPN(mode: PolicyMode? = nil) {
         guard !isVPNToggling, !isBusy else { return }
         isVPNToggling = true
         isBusy = true
@@ -97,12 +114,36 @@ final class MenuBarViewModel: ObservableObject {
                 // reports the target state — otherwise a stale connectionState
                 // would toggle the wrong way and disconnect a live session.
                 let alreadyConnected = await MainActor.run { sessionManager.isConnectedViaLog }
+                var reachable = alreadyConnected
                 if !alreadyConnected {
                     try await vpnControl.perform(.connect)
-                    await policyService.waitForStability()
+                    // True once the SASE policy endpoint answers — i.e. the tunnel
+                    // is actually up. False if the connect is still pending (e.g. an
+                    // expired session waiting on SAML sign-in).
+                    reachable = await policyService.waitForStability()
                 }
-                // Set connected state before clearing flags to avoid flash
-                await MainActor.run { connectionState = .connected }
+                // Show the connected UI, then switch mode (which surfaces its own
+                // "Switching to …" state). Clearing isVPNToggling here lets that
+                // switch phase render exactly like a manual toggle while connected.
+                await MainActor.run {
+                    connectionState = .connected
+                    isVPNToggling = false
+                }
+                // Switch into the chosen mode only once the tunnel is confirmed up:
+                // the /sase POST is unreachable until then, so attempting it during a
+                // pending sign-in would just error. The user can still pick the mode
+                // from the header toggle after signing in.
+                if let mode, reachable {
+                    // Skip the switch if the tunnel already came up in the requested
+                    // mode — no redundant POST or "Switching…" flash. If the current
+                    // mode can't be read, fall back to switching.
+                    let current = try? await policyService.fetchPolicy()
+                    if let current, PolicyMode(from: current.policy) == mode {
+                        await MainActor.run { policyMode = mode }
+                    } else {
+                        try await applyPolicyMode(mode)
+                    }
+                }
             } catch {
                 await MainActor.run { showError(error.localizedDescription) }
             }
